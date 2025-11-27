@@ -51,4 +51,4 @@ public class PixelDicePanel extends JPanel {
             g.fillOval(cx, y + size - off - dot, dot, dot);
         }
     }
-} //Ada perubahan contoh
+}

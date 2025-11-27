@@ -92,4 +92,4 @@ public class GamePanel extends JPanel {
         }
         return true;
     }
-} //adaperubahan
+}

@@ -36,4 +36,4 @@ public class SidePanel extends JPanel {
     public void setOnRollListener(Runnable r) {
         this.onRoll = r;
     }
-} //ada perubahan
+}

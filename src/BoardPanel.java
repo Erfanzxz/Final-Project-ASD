@@ -127,4 +127,4 @@ public class BoardPanel extends JPanel {
             if (n % i == 0) return false;
         return true;
     }
-} //ada perubahan
+}

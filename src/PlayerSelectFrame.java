@@ -27,4 +27,4 @@ public class PlayerSelectFrame extends JFrame {
 
         setVisible(true);
     }
-} //Ada perubahan cok
+}
