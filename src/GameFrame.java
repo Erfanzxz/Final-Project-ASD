@@ -13,4 +13,4 @@ public class GameFrame extends JFrame {
         add(panel);
         setVisible(true);
     }
-}
+} //Ada perubahan
