@@ -1,5 +1,5 @@
 public class Main {
     public static void main(String[] args) {
-        new PlayerSelectFrame();
+        System.out.println("Hello World");
     }
-} //Ada perubahan contoh
+}
