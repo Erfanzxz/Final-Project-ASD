@@ -20,21 +20,20 @@ public class GameBoard extends JFrame {
     static {
         try {
             // Coba load font dari file di root project
-            File fontBold = new File("font_bold.ttf");
-            File fontReg = new File("font_regular.ttf");
+            File fontBold = new File("C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\FONT\\Clash Royale.ttf");
+            File fontReg = new File("C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\FONT\\Clash Royale.ttf");
 
             if (fontBold.exists() && fontReg.exists()) {
-                POPS_BOLD = Font.createFont(Font.TRUETYPE_FONT, fontBold).deriveFont(Font.BOLD, 18f);
-                POPS_REGULAR = Font.createFont(Font.TRUETYPE_FONT, fontReg).deriveFont(Font.PLAIN, 14f);
+                POPS_BOLD = Font.createFont(Font.TRUETYPE_FONT, fontBold).deriveFont(Font.BOLD, 14f);
+                POPS_REGULAR = Font.createFont(Font.TRUETYPE_FONT, fontReg).deriveFont(Font.PLAIN, 10f);
                 GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(POPS_BOLD);
                 GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(POPS_REGULAR);
             } else {
                 throw new IOException("Font file not found");
             }
         } catch (Exception e) {
-            // Fallback ke SansSerif jika font tidak ada
-            POPS_BOLD = new Font("SansSerif", Font.BOLD, 18);
-            POPS_REGULAR = new Font("SansSerif", Font.PLAIN, 14);
+            POPS_BOLD = new Font("SansSerif", Font.BOLD, 14);
+            POPS_REGULAR = new Font("SansSerif", Font.PLAIN, 10);
         }
     }
 
@@ -44,15 +43,15 @@ public class GameBoard extends JFrame {
     private static final int TILE_COUNT = ROWS * COLS;
 
     // --- UKURAN VISUAL ---
-    private static final int NODE_DIAM = 55;
+    private static final int NODE_DIAM = 80;
     private static final int GAP = 18;
     private static final int PAD_LEFT = 30;
     private static final int PAD_TOP = 30;
     private static final int RIGHT_WIDTH = 380;
 
-    // Ukuran Gambar Player
-    private static final int CHAR_WIDTH = 40;
-    private static final int CHAR_HEIGHT = 40;
+    // Ukuran Gambar Player di Board
+    private static final int CHAR_WIDTH = 45;
+    private static final int CHAR_HEIGHT = 45;
 
     // --- PALET WARNA ---
     private static final Color BG_BLUE_DARK = new Color(0, 66, 69);
@@ -72,6 +71,19 @@ public class GameBoard extends JFrame {
             new Color(80, 220, 120), new Color(255, 230, 80)
     };
 
+    // --- DATA KARAKTER (PATH UPDATED) ---
+    private static final String[] CHAR_NAMES = {"Mario", "Luigi", "Waluigi", "Yossi"};
+
+    // Path Absolute sesuai request (Double Backslash \\ wajib di Java String)
+    private static final String[] CHAR_FILES = {
+            "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Player Character\\mario.png",
+            "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Player Character\\luigi.png",
+            "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Player Character\\waluigi.png",
+            "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Player Character\\yossi.png"
+    };
+
+    private String[] selectedCharFiles = new String[4]; // Menyimpan file png yang dipilih tiap player
+
     // --- DATA GAME ---
     private static final Map<String, Integer> WIN_SCORES = new HashMap<>();
     private static final Map<String, Integer> CUMULATIVE_SCORES = new HashMap<>();
@@ -88,7 +100,7 @@ public class GameBoard extends JFrame {
     private final Map<Integer, Integer> shortcuts = new HashMap<>();
 
     // --- KOMPONEN UI ---
-    private final BoardCanvas boardCanvas = new BoardCanvas();
+    private final BoardCanvas boardCanvas;
     private final DicePanel dicePanel = new DicePanel();
     private final StatsPanel statsPanel = new StatsPanel();
     private final JLabel turnLabel = new JLabel();
@@ -108,7 +120,7 @@ public class GameBoard extends JFrame {
     private boolean animating = false;
     private Clip moveClip;
     private Clip bgmClip;
-    private FloatControl gainControl; // Kontrol Volume Musik
+    private FloatControl gainControl;
     private boolean isMuted = false;
     private float previousVolume = -20.0f;
     private final Random rnd = new Random();
@@ -122,16 +134,20 @@ public class GameBoard extends JFrame {
         resetButton = createRoundedButton("RESET GAME", new Color(255, 210, 110), Color.BLACK);
         nextGameButton = createRoundedButton("NEXT GAME", new Color(100, 180, 100), Color.WHITE);
 
-        // Setup Awal
-        askPlayerDetails();
+        // 1. Setup Pemain & Karakter (Dialog Besar)
+        askPlayerDetailsAndCharacters();
+
+        // 2. Inisialisasi Canvas (Setelah gambar dipilih)
+        boardCanvas = new BoardCanvas();
+
         initScores();
         initState();
         generateShortcuts();
 
-        loadSound();           // Load Efek Suara
-        playBackgroundMusic(); // Load & Play Musik
+        loadSound();
+        playBackgroundMusic();
 
-        initUI(); // Bangun Tampilan
+        initUI();
 
         pack();
         setResizable(false);
@@ -169,59 +185,139 @@ public class GameBoard extends JFrame {
         return button;
     }
 
-    // --- SETUP PEMAIN ---
-    private void askPlayerDetails() {
-        String[] options = {"1", "2", "3", "4"};
+    // --- SETUP PEMAIN & KARAKTER (UPDATE) ---
+    private void askPlayerDetailsAndCharacters() {
+        // 1. Tanya Jumlah Pemain
+        String[] options = {"2", "3", "4"};
         UIManager.put("OptionPane.messageFont", POPS_REGULAR);
         UIManager.put("OptionPane.buttonFont", POPS_BOLD.deriveFont(12f));
-        UIManager.put("TextField.font", POPS_REGULAR);
 
-        String sel = (String) JOptionPane.showInputDialog(null, "Pilih jumlah pemain:", "Setup",
-                JOptionPane.QUESTION_MESSAGE, null, options, "2");
+        int choice = JOptionPane.showOptionDialog(null, "Berapa banyak pemain yang akan bergabung?", "Setup Game",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
 
-        if (sel == null) System.exit(0);
-        playerCount = Integer.parseInt(sel);
+        if (choice == -1) System.exit(0);
+        playerCount = choice + 2; // index 0->2 pemain, 1->3 pemain, dst.
 
-        JPanel inputPanel = new JPanel();
-        inputPanel.setLayout(new BoxLayout(inputPanel, BoxLayout.Y_AXIS));
-        inputPanel.setBackground(BG_BLUE_MEDIUM);
-        inputPanel.setBorder(new EmptyBorder(15, 15, 15, 15));
+        // 2. Dialog Custom Besar
+        JDialog dialog = new JDialog((Frame)null, "Setup Player & Character", true);
+        dialog.setLayout(new BorderLayout());
+        dialog.getContentPane().setBackground(BG_BLUE_MEDIUM);
 
-        JTextField[] nameFields = new JTextField[playerCount];
-        JLabel title = new JLabel("Nama Pemain:");
-        title.setFont(POPS_BOLD);
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        mainPanel.setBackground(BG_BLUE_MEDIUM);
+        mainPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+
+        // Judul
+        JLabel title = new JLabel("Pilih Identitas & Karakter");
+        title.setFont(POPS_BOLD.deriveFont(24f));
         title.setForeground(Color.WHITE);
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
-        inputPanel.add(title);
-        inputPanel.add(Box.createVerticalStrut(10));
+        mainPanel.add(title);
+        mainPanel.add(Box.createVerticalStrut(20));
 
+        JTextField[] nameFields = new JTextField[playerCount];
+        JComboBox<String>[] charCombos = new JComboBox[playerCount];
+
+        // Loop untuk membuat baris input setiap pemain
         for (int i = 0; i < playerCount; i++) {
-            JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT));
-            row.setBackground(BG_BLUE_MEDIUM);
-            JPanel colorDot = new JPanel();
-            colorDot.setPreferredSize(new Dimension(20, 20));
-            colorDot.setBackground(PLAYER_COLORS[i]);
-            colorDot.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
-            nameFields[i] = new JTextField("Player " + (i + 1), 12);
+            JPanel rowPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 5));
+            rowPanel.setBackground(new Color(0, 0, 0, 50));
+            rowPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(255,255,255,50)));
+
+            // Label Player
+            JLabel lbl = new JLabel("Player " + (i+1));
+            lbl.setFont(POPS_BOLD);
+            lbl.setForeground(PLAYER_COLORS[i]);
+            lbl.setPreferredSize(new Dimension(80, 30));
+
+            // Input Nama
+            nameFields[i] = new JTextField("Player " + (i+1), 10);
             nameFields[i].setFont(POPS_REGULAR);
-            nameFields[i].setForeground(Color.BLACK);
-            nameFields[i].setBackground(Color.WHITE);
-            nameFields[i].setCaretColor(Color.BLACK);
-            row.add(colorDot);
-            row.add(nameFields[i]);
-            inputPanel.add(row);
+
+            // Pilihan Karakter
+            charCombos[i] = new JComboBox<>(CHAR_NAMES);
+            charCombos[i].setFont(POPS_REGULAR);
+            charCombos[i].setSelectedIndex(i);
+
+            // Preview Gambar
+            JLabel imagePreview = new JLabel();
+            imagePreview.setPreferredSize(new Dimension(60, 60));
+            imagePreview.setHorizontalAlignment(SwingConstants.CENTER);
+            imagePreview.setBorder(BorderFactory.createLineBorder(Color.WHITE, 1));
+
+            // Update Preview saat combo box berubah
+            final int pIndex = i;
+            charCombos[i].addActionListener(e -> updatePreview(imagePreview, (String)charCombos[pIndex].getSelectedItem()));
+
+            // Set initial preview
+            updatePreview(imagePreview, CHAR_NAMES[i]);
+
+            rowPanel.add(lbl);
+            rowPanel.add(new JLabel("Nama:") {{setForeground(Color.WHITE);}});
+            rowPanel.add(nameFields[i]);
+            rowPanel.add(new JLabel("Char:") {{setForeground(Color.WHITE);}});
+            rowPanel.add(charCombos[i]);
+            rowPanel.add(imagePreview);
+
+            mainPanel.add(rowPanel);
+            mainPanel.add(Box.createVerticalStrut(10));
         }
 
-        UIManager.put("OptionPane.background", BG_BLUE_MEDIUM);
-        UIManager.put("Panel.background", BG_BLUE_MEDIUM);
-        int result = JOptionPane.showConfirmDialog(null, inputPanel, "Identitas Pemain",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        // Tombol Start
+        JButton btnStart = createRoundedButton("START GAME", new Color(100, 180, 100), Color.WHITE);
+        btnStart.setPreferredSize(new Dimension(200, 50));
+        btnStart.addActionListener(e -> dialog.dispose());
 
-        if (result != JOptionPane.OK_OPTION) System.exit(0);
+        JPanel btnPanel = new JPanel();
+        btnPanel.setBackground(BG_BLUE_MEDIUM);
+        btnPanel.add(btnStart);
 
+        dialog.add(mainPanel, BorderLayout.CENTER);
+        dialog.add(btnPanel, BorderLayout.SOUTH);
+        dialog.pack();
+        dialog.setLocationRelativeTo(null);
+        dialog.setVisible(true);
+
+        // Simpan Data setelah dialog tutup
         for (int i = 0; i < playerCount; i++) {
-            String txt = nameFields[i].getText().trim();
-            playerNames[i] = txt.isEmpty() ? "Player " + (i+1) : txt;
+            playerNames[i] = nameFields[i].getText().trim();
+            if (playerNames[i].isEmpty()) playerNames[i] = "Player " + (i+1);
+
+            // Map Nama Karakter ke Nama File Absolute
+            String selectedName = (String) charCombos[i].getSelectedItem();
+            for(int k=0; k<CHAR_NAMES.length; k++) {
+                if(CHAR_NAMES[k].equals(selectedName)) {
+                    selectedCharFiles[i] = CHAR_FILES[k];
+                    break;
+                }
+            }
+        }
+    }
+
+    private void updatePreview(JLabel label, String charName) {
+        String fileName = "";
+        for(int k=0; k<CHAR_NAMES.length; k++) {
+            if(CHAR_NAMES[k].equals(charName)) {
+                fileName = CHAR_FILES[k];
+                break;
+            }
+        }
+
+        try {
+            File f = new File(fileName);
+            if(f.exists()) {
+                Image img = ImageIO.read(f);
+                Image scaled = img.getScaledInstance(50, 50, Image.SCALE_SMOOTH);
+                label.setIcon(new ImageIcon(scaled));
+                label.setText("");
+            } else {
+                label.setIcon(null);
+                label.setText("No Img");
+                label.setForeground(Color.WHITE);
+            }
+        } catch (Exception ex) {
+            label.setText("Err");
         }
     }
 
@@ -377,7 +473,7 @@ public class GameBoard extends JFrame {
 
         setContentPane(mainContainer);
 
-        // **PERBAIKAN PENTING: Mengaktifkan tombol Roll di awal**
+        // Mengaktifkan tombol Roll di awal
         cardLayout.show(rollTogglePanel, "Roll");
         rollButton.setEnabled(true);
     }
@@ -587,6 +683,12 @@ public class GameBoard extends JFrame {
     private void resetGame() {
         if (stepTimer != null) stepTimer.stop();
         animating = false;
+
+        // Show dialog again for new game if desired, or just reset state
+        askPlayerDetailsAndCharacters();
+        // Reload images based on new selection
+        boardCanvas.reloadImages();
+
         initState();
         generateShortcuts();
         currentPlayer = 0;
@@ -624,7 +726,7 @@ public class GameBoard extends JFrame {
 
     private void playBackgroundMusic() {
         try {
-            File f = new File("backsound.wav"); // PASTIKAN FILE FORMAT WAV
+            File f = new File("backsound.wav");
             if (f.exists()) {
                 AudioInputStream ais = AudioSystem.getAudioInputStream(f);
                 bgmClip = AudioSystem.getClip();
@@ -673,20 +775,22 @@ public class GameBoard extends JFrame {
                 if (f.exists()) backgroundImage = ImageIO.read(f);
             } catch (IOException e) {}
 
-            // LOAD KARAKTER DARI FOLDER KHUSUS
-            String charPath = "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Player Character\\";
-            String[] charFiles = {"mario.png", "luigi.png", "waluigi.png", "yossi.png"};
+            reloadImages();
+        }
 
+        // Dipanggil saat game start/reset untuk memuat ulang gambar sesuai pilihan
+        void reloadImages() {
             for (int i = 0; i < 4; i++) {
                 try {
-                    File f = new File(charPath + charFiles[i]);
-                    if (f.exists()) {
-                        playerImages[i] = ImageIO.read(f);
-                    } else {
-                        System.err.println("Character file not found: " + charFiles[i]);
+                    // Load gambar sesuai pilihan di array selectedCharFiles
+                    String fname = selectedCharFiles[i];
+                    if(fname != null) {
+                        File f = new File(fname);
+                        if (f.exists()) playerImages[i] = ImageIO.read(f);
+                        else System.err.println("File char not found: " + fname);
                     }
                 } catch (IOException e) {
-                    System.err.println("Error loading: " + charFiles[i]);
+                    System.err.println("Error loading char image");
                 }
             }
         }
