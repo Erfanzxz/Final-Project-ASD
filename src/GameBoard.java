@@ -597,7 +597,7 @@ public class GameBoard extends JFrame {
 
     private void loadSound() {
         try {
-            File f = new File("move.wav");
+            File f = new File("C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Backsound Game\\move.wav");
             if (f.exists()) {
                 AudioInputStream ais = AudioSystem.getAudioInputStream(f);
                 moveClip = AudioSystem.getClip();
