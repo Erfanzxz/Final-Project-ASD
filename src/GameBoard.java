@@ -9,86 +9,70 @@ import java.util.List;
 import java.io.File;
 import java.io.IOException;
 import javax.imageio.ImageIO;
-import java.net.URL;
 import javax.sound.sampled.*;
 
 public class GameBoard extends JFrame {
 
-    // --- FONT CUSTOM LOADER ---
+    // --- FONT LOADING ---
     private static Font POPS_BOLD;
     private static Font POPS_REGULAR;
 
-    // Blok Static: Dijalankan sekali saat program mulai untuk load font
     static {
         try {
-            // 1. Load Font Bold
-            File fontBoldFile = new File("C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\FONT\\Clash Royale.ttf"); // Pastikan nama file sesuai
-            if (fontBoldFile.exists()) {
-                Font font = Font.createFont(Font.TRUETYPE_FONT, fontBoldFile);
-                GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(font);
-                POPS_BOLD = font.deriveFont(Font.BOLD, 18f);
-            } else {
-                System.err.println("File font custom tidak ditemukan. Maka secara default akan menggunakan :  SansSerif.");
-                POPS_BOLD = new Font("SansSerif", Font.BOLD, 18);
-            }
+            // Coba load font dari file di root project
+            File fontBold = new File("font_bold.ttf");
+            File fontReg = new File("font_regular.ttf");
 
-            // 2. Load Font Regular
-            File fontRegFile = new File("C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\FONT\\Clash Royale.ttf"); // Pastikan nama file sesuai
-            if (fontRegFile.exists()) {
-                Font font = Font.createFont(Font.TRUETYPE_FONT, fontRegFile);
-                GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(font);
-                POPS_REGULAR = font.deriveFont(Font.PLAIN, 14f);
+            if (fontBold.exists() && fontReg.exists()) {
+                POPS_BOLD = Font.createFont(Font.TRUETYPE_FONT, fontBold).deriveFont(Font.BOLD, 18f);
+                POPS_REGULAR = Font.createFont(Font.TRUETYPE_FONT, fontReg).deriveFont(Font.PLAIN, 14f);
+                GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(POPS_BOLD);
+                GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(POPS_REGULAR);
             } else {
-                System.err.println("File font custom tidak ditemukan. Maka secara default akan menggunakan :  SansSerif.");
-                POPS_REGULAR = new Font("SansSerif", Font.PLAIN, 14);
+                throw new IOException("Font file not found");
             }
-
-        } catch (FontFormatException | IOException e) {
-            e.printStackTrace();
-            // Fallback jika error
+        } catch (Exception e) {
+            // Fallback ke SansSerif jika font tidak ada
             POPS_BOLD = new Font("SansSerif", Font.BOLD, 18);
             POPS_REGULAR = new Font("SansSerif", Font.PLAIN, 14);
         }
     }
 
-    // Board layout
+    // --- KONFIGURASI PAPAN ---
     private static final int ROWS = 10;
     private static final int COLS = 10;
     private static final int TILE_COUNT = ROWS * COLS;
 
-    // Visual sizes
+    // --- UKURAN VISUAL ---
     private static final int NODE_DIAM = 55;
     private static final int GAP = 18;
     private static final int PAD_LEFT = 30;
     private static final int PAD_TOP = 30;
-
-    // Right panel width
     private static final int RIGHT_WIDTH = 380;
 
-    // Colors
+    // Ukuran Gambar Player
+    private static final int CHAR_WIDTH = 40;
+    private static final int CHAR_HEIGHT = 40;
+
+    // --- PALET WARNA ---
     private static final Color BG_BLUE_DARK = new Color(0, 66, 69);
     private static final Color BG_BLUE_MEDIUM = new Color(2, 104, 105);
-
     private static final Color TILE_COLOR_A = new Color(255, 245, 180);
     private static final Color TILE_COLOR_B = new Color(200, 230, 255);
-
     private static final Color TRAIL_FORWARD = new Color(70, 200, 100, 150);
     private static final Color TRAIL_BACKWARD = new Color(255, 100, 100, 150);
     private static final Color SHORTCUT_COLOR = new Color(255, 200, 50, 220);
     private static final Color EDGE_COLOR = new Color(100, 130, 200, 180);
     private static final Color COIN_COLOR = new Color(255, 215, 0);
-
     private static final Color PRIME_OUTLINE = new Color(0, 255, 255);
     private static final Color MULT5_OUTLINE = new Color(255, 165, 0);
 
     private static final Color[] PLAYER_COLORS = new Color[]{
-            new Color(255, 80, 80),
-            new Color(80, 150, 255),
-            new Color(80, 220, 120),
-            new Color(255, 230, 80)
+            new Color(255, 80, 80), new Color(80, 150, 255),
+            new Color(80, 220, 120), new Color(255, 230, 80)
     };
 
-    // Data Structures
+    // --- DATA GAME ---
     private static final Map<String, Integer> WIN_SCORES = new HashMap<>();
     private static final Map<String, Integer> CUMULATIVE_SCORES = new HashMap<>();
 
@@ -103,28 +87,28 @@ public class GameBoard extends JFrame {
     private final Map<Integer, Boolean> coinCollected = new HashMap<>();
     private final Map<Integer, Integer> shortcuts = new HashMap<>();
 
-    // UI Components
+    // --- KOMPONEN UI ---
     private final BoardCanvas boardCanvas = new BoardCanvas();
     private final DicePanel dicePanel = new DicePanel();
     private final StatsPanel statsPanel = new StatsPanel();
     private final JLabel turnLabel = new JLabel();
     private final JTextArea logArea = new JTextArea();
 
-    // Buttons & Layout Control
+    // Kontrol Tombol & Layout
     private JPanel rollTogglePanel;
     private CardLayout cardLayout;
     private JButton rollButton;
     private JButton resetButton;
     private JButton nextGameButton;
 
-    // Animation & Sound
+    // --- AUDIO & ANIMASI ---
     private javax.swing.Timer stepTimer;
     private List<Integer> stepQueue = new ArrayList<>();
     private int stepIndex = 0;
     private boolean animating = false;
     private Clip moveClip;
     private Clip bgmClip;
-    private FloatControl gainControl;
+    private FloatControl gainControl; // Kontrol Volume Musik
     private boolean isMuted = false;
     private float previousVolume = -20.0f;
     private final Random rnd = new Random();
@@ -133,20 +117,21 @@ public class GameBoard extends JFrame {
         super("FUN FAMILY GAME NIGHT");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        // Inisialisasi Tombol
+        // Inisialisasi Style Tombol
         rollButton = createRoundedButton("ROLL DICE", new Color(255, 108, 54), Color.WHITE);
         resetButton = createRoundedButton("RESET GAME", new Color(255, 210, 110), Color.BLACK);
         nextGameButton = createRoundedButton("NEXT GAME", new Color(100, 180, 100), Color.WHITE);
 
+        // Setup Awal
         askPlayerDetails();
         initScores();
         initState();
         generateShortcuts();
 
-        loadSound();
-        playBackgroundMusic();
+        loadSound();           // Load Efek Suara
+        playBackgroundMusic(); // Load & Play Musik
 
-        initUI();
+        initUI(); // Bangun Tampilan
 
         pack();
         setResizable(false);
@@ -157,6 +142,7 @@ public class GameBoard extends JFrame {
         updateTurnLabel();
     }
 
+    // --- HELPER UI ---
     private JButton createRoundedButton(String text, Color bgColor, Color fgColor) {
         JButton button = new JButton(text) {
             @Override
@@ -183,17 +169,16 @@ public class GameBoard extends JFrame {
         return button;
     }
 
+    // --- SETUP PEMAIN ---
     private void askPlayerDetails() {
         String[] options = {"1", "2", "3", "4"};
-
-        // Custom UI untuk OptionPane agar font berubah
         UIManager.put("OptionPane.messageFont", POPS_REGULAR);
         UIManager.put("OptionPane.buttonFont", POPS_BOLD.deriveFont(12f));
         UIManager.put("TextField.font", POPS_REGULAR);
 
-        String sel = (String) JOptionPane.showInputDialog(
-                null, "Pilih jumlah pemain:", "Setup",
+        String sel = (String) JOptionPane.showInputDialog(null, "Pilih jumlah pemain:", "Setup",
                 JOptionPane.QUESTION_MESSAGE, null, options, "2");
+
         if (sel == null) System.exit(0);
         playerCount = Integer.parseInt(sel);
 
@@ -229,9 +214,9 @@ public class GameBoard extends JFrame {
 
         UIManager.put("OptionPane.background", BG_BLUE_MEDIUM);
         UIManager.put("Panel.background", BG_BLUE_MEDIUM);
-
         int result = JOptionPane.showConfirmDialog(null, inputPanel, "Identitas Pemain",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
         if (result != JOptionPane.OK_OPTION) System.exit(0);
 
         for (int i = 0; i < playerCount; i++) {
@@ -249,6 +234,7 @@ public class GameBoard extends JFrame {
         }
     }
 
+    // --- PANEL KONTROL SUARA ---
     private JPanel createSoundControlPanel() {
         JPanel soundPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
         soundPanel.setBackground(BG_BLUE_MEDIUM);
@@ -308,15 +294,18 @@ public class GameBoard extends JFrame {
         return soundPanel;
     }
 
+    // --- INITIALIZE UI ---
     private void initUI() {
         int canvasW = 2 * PAD_LEFT + COLS * NODE_DIAM + (COLS - 1) * GAP;
         int canvasH = 2 * PAD_TOP + ROWS * NODE_DIAM + (ROWS - 1) * GAP;
         boardCanvas.setPreferredSize(new Dimension(canvasW, canvasH));
 
+        // Right Panel Container
         JPanel rightPanel = new JPanel(new BorderLayout());
         rightPanel.setPreferredSize(new Dimension(RIGHT_WIDTH, canvasH));
         rightPanel.setBackground(BG_BLUE_DARK);
 
+        // Top Section (Dice & Stats)
         JPanel topSection = new JPanel();
         topSection.setLayout(new BoxLayout(topSection, BoxLayout.Y_AXIS));
         topSection.setBackground(BG_BLUE_DARK);
@@ -326,6 +315,7 @@ public class GameBoard extends JFrame {
         topSection.add(statsPanel);
         rightPanel.add(topSection, BorderLayout.NORTH);
 
+        // Center Section (Controls)
         JPanel controlPanel = new JPanel();
         controlPanel.setLayout(new BoxLayout(controlPanel, BoxLayout.Y_AXIS));
         controlPanel.setBackground(BG_BLUE_MEDIUM);
@@ -337,9 +327,11 @@ public class GameBoard extends JFrame {
         controlPanel.add(turnLabel);
         controlPanel.add(Box.createVerticalStrut(10));
 
+        // ADD SOUND CONTROLS
         controlPanel.add(createSoundControlPanel());
         controlPanel.add(Box.createVerticalStrut(10));
 
+        // Button Layout Logic
         cardLayout = new CardLayout();
         rollTogglePanel = new JPanel(cardLayout);
         rollTogglePanel.setBackground(BG_BLUE_MEDIUM);
@@ -347,6 +339,7 @@ public class GameBoard extends JFrame {
         rollTogglePanel.add(rollButton, "Roll");
         rollTogglePanel.add(nextGameButton, "NextGame");
 
+        // Listeners
         rollButton.addActionListener(e -> onRoll());
         nextGameButton.addActionListener(e -> onNextGame());
         resetButton.addActionListener(e -> resetGame());
@@ -362,6 +355,7 @@ public class GameBoard extends JFrame {
         controlPanel.add(buttonRow);
         rightPanel.add(controlPanel, BorderLayout.CENTER);
 
+        // Bottom Section (Log)
         logArea.setEditable(false);
         logArea.setBackground(new Color(0, 43, 45));
         logArea.setForeground(Color.WHITE);
@@ -374,6 +368,7 @@ public class GameBoard extends JFrame {
         scrollLog.setPreferredSize(new Dimension(RIGHT_WIDTH, 180));
         rightPanel.add(scrollLog, BorderLayout.SOUTH);
 
+        // Main Container
         JPanel mainContainer = new JPanel(new BorderLayout(10, 10));
         mainContainer.setBackground(BG_BLUE_MEDIUM);
         mainContainer.setBorder(new EmptyBorder(10, 10, 10, 10));
@@ -381,10 +376,13 @@ public class GameBoard extends JFrame {
         mainContainer.add(rightPanel, BorderLayout.EAST);
 
         setContentPane(mainContainer);
+
+        // **PERBAIKAN PENTING: Mengaktifkan tombol Roll di awal**
         cardLayout.show(rollTogglePanel, "Roll");
         rollButton.setEnabled(true);
     }
 
+    // --- GAME STATE ---
     private void initState() {
         Arrays.fill(playerPos, 1);
         Arrays.fill(unlocked, false);
@@ -421,6 +419,7 @@ public class GameBoard extends JFrame {
         }
     }
 
+    // --- GAME LOGIC ---
     private void onRoll() {
         if (animating) return;
         rollButton.setEnabled(false);
@@ -449,6 +448,8 @@ public class GameBoard extends JFrame {
     private void calculateMove(int roll, boolean forward) {
         stepQueue.clear();
         int start = playerPos[currentPlayer];
+
+        // LOGIKA BIASA (Linear)
         if (!forward || !unlocked[currentPlayer]) {
             int curr = start;
             int dir = forward ? 1 : -1;
@@ -460,6 +461,7 @@ public class GameBoard extends JFrame {
                 stepQueue.add(curr);
             }
         } else {
+            // LOGIKA SHORTCUT PINTAR (BFS)
             class PathNode {
                 int tile;
                 List<Integer> path;
@@ -540,6 +542,8 @@ public class GameBoard extends JFrame {
         animating = false;
         int pos = playerPos[currentPlayer];
         String pName = playerNames[currentPlayer];
+
+        // Coins
         if (coinValues.containsKey(pos) && !coinCollected.get(pos)) {
             int val = coinValues.get(pos);
             playerScores[currentPlayer] += val;
@@ -548,12 +552,14 @@ public class GameBoard extends JFrame {
             log("💰 " + pName + " got " + val + " coins!");
             boardCanvas.repaint();
         }
+        // Unlock
         if (isPrime(pos)) {
             if (!unlocked[currentPlayer]) {
                 unlocked[currentPlayer] = true;
                 log("🔓 " + pName + " unlocked shortcuts!");
             }
         }
+        // Win
         if (pos >= TILE_COUNT) {
             log("🏆 " + pName + " WINS!");
             WIN_SCORES.put(pName, WIN_SCORES.get(pName) + 1);
@@ -563,12 +569,14 @@ public class GameBoard extends JFrame {
             rollButton.setEnabled(false);
             return;
         }
+        // Extra Turn
         if (pos % 5 == 0) {
             log("✨ " + pName + " gets extra turn!");
             rollButton.setEnabled(true);
             updateTurnLabel();
             return;
         }
+        // Next Player
         currentPlayer = (currentPlayer + 1) % playerCount;
         updateTurnLabel();
         rollButton.setEnabled(true);
@@ -586,6 +594,7 @@ public class GameBoard extends JFrame {
         boardCanvas.repaint();
         updateTurnLabel();
         dicePanel.show(1, true);
+
         cardLayout.show(rollTogglePanel, "Roll");
         rollButton.setEnabled(true);
         log("\n--- GAME RESET ---");
@@ -601,6 +610,7 @@ public class GameBoard extends JFrame {
         logArea.setCaretPosition(logArea.getDocument().getLength());
     }
 
+    // --- AUDIO SYSTEM ---
     private void loadSound() {
         try {
             File f = new File("move.wav");
@@ -614,22 +624,24 @@ public class GameBoard extends JFrame {
 
     private void playBackgroundMusic() {
         try {
-            File f = new File("C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Backsound Game\\Orerbugh City (Backsound Game).wav");
+            File f = new File("backsound.wav"); // PASTIKAN FILE FORMAT WAV
             if (f.exists()) {
                 AudioInputStream ais = AudioSystem.getAudioInputStream(f);
                 bgmClip = AudioSystem.getClip();
                 bgmClip.open(ais);
+
                 try {
                     gainControl = (FloatControl) bgmClip.getControl(FloatControl.Type.MASTER_GAIN);
-                    gainControl.setValue(-25.0f);
+                    gainControl.setValue(-20.0f); // Default volume
                 } catch(Exception ex){}
+
                 bgmClip.loop(Clip.LOOP_CONTINUOUSLY);
                 bgmClip.start();
             } else {
-                System.err.println("File backsound.wav tidak ditemukan di root project.");
+                System.err.println("Backsound file not found in project root.");
             }
         } catch (UnsupportedAudioFileException e) {
-            System.err.println("Format audio salah. Harap gunakan .wav");
+            System.err.println("Audio format error. Must be .wav");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -647,6 +659,7 @@ public class GameBoard extends JFrame {
     private class BoardCanvas extends JPanel {
         private final Color[] trails = new Color[TILE_COUNT+1];
         private Image backgroundImage;
+        private Image[] playerImages = new Image[4];
 
         BoardCanvas() {
             setBackground(BG_BLUE_MEDIUM);
@@ -654,13 +667,27 @@ public class GameBoard extends JFrame {
                     2 * PAD_LEFT + COLS * NODE_DIAM + (COLS - 1) * GAP,
                     2 * PAD_TOP + ROWS * NODE_DIAM + (ROWS - 1) * GAP));
 
+            // Load BG
             try {
                 File f = new File("3d-fantasy-scene.jpg");
-                if (f.exists()) {
-                    backgroundImage = ImageIO.read(f);
+                if (f.exists()) backgroundImage = ImageIO.read(f);
+            } catch (IOException e) {}
+
+            // LOAD KARAKTER DARI FOLDER KHUSUS
+            String charPath = "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Player Character\\";
+            String[] charFiles = {"mario.png", "luigi.png", "waluigi.png", "yossi.png"};
+
+            for (int i = 0; i < 4; i++) {
+                try {
+                    File f = new File(charPath + charFiles[i]);
+                    if (f.exists()) {
+                        playerImages[i] = ImageIO.read(f);
+                    } else {
+                        System.err.println("Character file not found: " + charFiles[i]);
+                    }
+                } catch (IOException e) {
+                    System.err.println("Error loading: " + charFiles[i]);
                 }
-            } catch (IOException e) {
-                System.err.println("Gambar tidak ditemukan.");
             }
         }
 
@@ -673,12 +700,8 @@ public class GameBoard extends JFrame {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            if (backgroundImage != null) {
-                g2.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
-            } else {
-                g2.setColor(BG_BLUE_DARK);
-                g2.fillRect(0, 0, getWidth(), getHeight());
-            }
+            if (backgroundImage != null) g2.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+            else { g2.setColor(BG_BLUE_DARK); g2.fillRect(0, 0, getWidth(), getHeight()); }
 
             g2.setColor(EDGE_COLOR);
             g2.setStroke(new BasicStroke(2));
@@ -699,6 +722,7 @@ public class GameBoard extends JFrame {
             for (int node = 1; node <= TILE_COUNT; node++) {
                 Point p = getTileCenter(node);
                 int r = NODE_DIAM / 2;
+
                 Color baseColor;
                 int logicalRow = (node - 1) / COLS;
                 int logicalCol = (node - 1) % COLS;
@@ -741,15 +765,24 @@ public class GameBoard extends JFrame {
                 g2.drawString(label, p.x - fm.stringWidth(label)/2, p.y + fm.getAscent()/2 - 2);
             }
 
+            // Draw Players (Image or Circle)
             for (int p = 0; p < playerCount; p++) {
                 Point c = getTileCenter(playerPos[p]);
                 int offX = (p % 2 == 0) ? -10 : 10;
                 int offY = (p / 2 == 0) ? -10 : 10;
-                g2.setColor(PLAYER_COLORS[p]);
-                g2.fillOval(c.x + offX - 8, c.y + offY - 8, 16, 16);
-                g2.setColor(Color.BLACK);
-                g2.setStroke(new BasicStroke(1));
-                g2.drawOval(c.x + offX - 8, c.y + offY - 8, 16, 16);
+
+                int imgX = c.x + offX - (CHAR_WIDTH / 2);
+                int imgY = c.y + offY - (CHAR_HEIGHT / 2);
+
+                if (playerImages[p] != null) {
+                    g2.drawImage(playerImages[p], imgX, imgY, CHAR_WIDTH, CHAR_HEIGHT, null);
+                } else {
+                    g2.setColor(PLAYER_COLORS[p]);
+                    g2.fillOval(c.x + offX - 8, c.y + offY - 8, 16, 16);
+                    g2.setColor(Color.BLACK);
+                    g2.setStroke(new BasicStroke(1));
+                    g2.drawOval(c.x + offX - 8, c.y + offY - 8, 16, 16);
+                }
             }
             g2.dispose();
         }

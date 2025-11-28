@@ -6,6 +6,7 @@
       <sourceFolder url="file://$MODULE_DIR$/Background Game" type="java-resource" />
       <sourceFolder url="file://$MODULE_DIR$/Backsound Game" type="java-resource" />
       <sourceFolder url="file://$MODULE_DIR$/FONT" type="java-resource" />
+      <sourceFolder url="file://$MODULE_DIR$/Player Character" type="java-resource" />
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />
