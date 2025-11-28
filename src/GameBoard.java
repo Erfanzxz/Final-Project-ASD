@@ -1,5 +1,7 @@
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
@@ -12,10 +14,42 @@ import javax.sound.sampled.*;
 
 public class GameBoard extends JFrame {
 
-    // --- Font Definitions ---
-    private static final String FONT_FAMILY = "SansSerif";
-    private static final Font POPS_BOLD = new Font(FONT_FAMILY, Font.BOLD, 18);
-    private static final Font POPS_REGULAR = new Font(FONT_FAMILY, Font.PLAIN, 14);
+    // --- FONT CUSTOM LOADER ---
+    private static Font POPS_BOLD;
+    private static Font POPS_REGULAR;
+
+    // Blok Static: Dijalankan sekali saat program mulai untuk load font
+    static {
+        try {
+            // 1. Load Font Bold
+            File fontBoldFile = new File("C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\FONT\\Clash Royale.ttf"); // Pastikan nama file sesuai
+            if (fontBoldFile.exists()) {
+                Font font = Font.createFont(Font.TRUETYPE_FONT, fontBoldFile);
+                GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(font);
+                POPS_BOLD = font.deriveFont(Font.BOLD, 18f);
+            } else {
+                System.err.println("File font custom tidak ditemukan. Maka secara default akan menggunakan :  SansSerif.");
+                POPS_BOLD = new Font("SansSerif", Font.BOLD, 18);
+            }
+
+            // 2. Load Font Regular
+            File fontRegFile = new File("C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\FONT\\Clash Royale.ttf"); // Pastikan nama file sesuai
+            if (fontRegFile.exists()) {
+                Font font = Font.createFont(Font.TRUETYPE_FONT, fontRegFile);
+                GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(font);
+                POPS_REGULAR = font.deriveFont(Font.PLAIN, 14f);
+            } else {
+                System.err.println("File font custom tidak ditemukan. Maka secara default akan menggunakan :  SansSerif.");
+                POPS_REGULAR = new Font("SansSerif", Font.PLAIN, 14);
+            }
+
+        } catch (FontFormatException | IOException e) {
+            e.printStackTrace();
+            // Fallback jika error
+            POPS_BOLD = new Font("SansSerif", Font.BOLD, 18);
+            POPS_REGULAR = new Font("SansSerif", Font.PLAIN, 14);
+        }
+    }
 
     // Board layout
     private static final int ROWS = 10;
@@ -90,6 +124,9 @@ public class GameBoard extends JFrame {
     private boolean animating = false;
     private Clip moveClip;
     private Clip bgmClip;
+    private FloatControl gainControl;
+    private boolean isMuted = false;
+    private float previousVolume = -20.0f;
     private final Random rnd = new Random();
 
     public GameBoard() {
@@ -107,7 +144,7 @@ public class GameBoard extends JFrame {
         generateShortcuts();
 
         loadSound();
-        playBackgroundMusic(); // Memutar Backsound
+        playBackgroundMusic();
 
         initUI();
 
@@ -148,6 +185,12 @@ public class GameBoard extends JFrame {
 
     private void askPlayerDetails() {
         String[] options = {"1", "2", "3", "4"};
+
+        // Custom UI untuk OptionPane agar font berubah
+        UIManager.put("OptionPane.messageFont", POPS_REGULAR);
+        UIManager.put("OptionPane.buttonFont", POPS_BOLD.deriveFont(12f));
+        UIManager.put("TextField.font", POPS_REGULAR);
+
         String sel = (String) JOptionPane.showInputDialog(
                 null, "Pilih jumlah pemain:", "Setup",
                 JOptionPane.QUESTION_MESSAGE, null, options, "2");
@@ -186,6 +229,7 @@ public class GameBoard extends JFrame {
 
         UIManager.put("OptionPane.background", BG_BLUE_MEDIUM);
         UIManager.put("Panel.background", BG_BLUE_MEDIUM);
+
         int result = JOptionPane.showConfirmDialog(null, inputPanel, "Identitas Pemain",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (result != JOptionPane.OK_OPTION) System.exit(0);
@@ -203,6 +247,65 @@ public class GameBoard extends JFrame {
             WIN_SCORES.put(playerNames[i], 0);
             CUMULATIVE_SCORES.put(playerNames[i], 0);
         }
+    }
+
+    private JPanel createSoundControlPanel() {
+        JPanel soundPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        soundPanel.setBackground(BG_BLUE_MEDIUM);
+        soundPanel.setBorder(new EmptyBorder(0, 0, 10, 0));
+
+        JButton muteButton = new JButton("🔊");
+        muteButton.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 16));
+        muteButton.setFocusPainted(false);
+        muteButton.setBackground(Color.WHITE);
+        muteButton.setPreferredSize(new Dimension(50, 30));
+
+        JSlider volumeSlider = new JSlider(-60, 6, -20);
+        volumeSlider.setPreferredSize(new Dimension(150, 30));
+        volumeSlider.setBackground(BG_BLUE_MEDIUM);
+        volumeSlider.setForeground(Color.WHITE);
+
+        volumeSlider.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                if (gainControl != null) {
+                    float value = volumeSlider.getValue();
+                    if (value == -60) {
+                        gainControl.setValue(gainControl.getMinimum());
+                        muteButton.setText("🔇");
+                        isMuted = true;
+                    } else {
+                        gainControl.setValue(value);
+                        muteButton.setText("🔊");
+                        isMuted = false;
+                        previousVolume = value;
+                    }
+                }
+            }
+        });
+
+        muteButton.addActionListener(e -> {
+            if (gainControl != null) {
+                if (isMuted) {
+                    gainControl.setValue(previousVolume);
+                    volumeSlider.setValue((int) previousVolume);
+                    muteButton.setText("🔊");
+                    isMuted = false;
+                } else {
+                    previousVolume = volumeSlider.getValue();
+                    gainControl.setValue(gainControl.getMinimum());
+                    volumeSlider.setValue(-60);
+                    muteButton.setText("🔇");
+                    isMuted = true;
+                }
+            }
+        });
+
+        soundPanel.add(new JLabel("Music: ") {{ setForeground(Color.WHITE); setFont(POPS_REGULAR); }});
+        soundPanel.add(muteButton);
+        soundPanel.add(volumeSlider);
+
+        return soundPanel;
     }
 
     private void initUI() {
@@ -232,7 +335,10 @@ public class GameBoard extends JFrame {
         turnLabel.setFont(POPS_BOLD);
         turnLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         controlPanel.add(turnLabel);
-        controlPanel.add(Box.createVerticalStrut(20));
+        controlPanel.add(Box.createVerticalStrut(10));
+
+        controlPanel.add(createSoundControlPanel());
+        controlPanel.add(Box.createVerticalStrut(10));
 
         cardLayout = new CardLayout();
         rollTogglePanel = new JPanel(cardLayout);
@@ -264,7 +370,7 @@ public class GameBoard extends JFrame {
         JScrollPane scrollLog = new JScrollPane(logArea);
         scrollLog.setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createLineBorder(new Color(100, 150, 255)), "GAME HISTORY",
-                0, 0, POPS_BOLD, Color.BLACK));
+                0, 0, POPS_BOLD.deriveFont(12f), Color.BLACK));
         scrollLog.setPreferredSize(new Dimension(RIGHT_WIDTH, 180));
         rightPanel.add(scrollLog, BorderLayout.SOUTH);
 
@@ -495,10 +601,9 @@ public class GameBoard extends JFrame {
         logArea.setCaretPosition(logArea.getDocument().getLength());
     }
 
-    // --- SOUND LOADING: FIXED PATHS ---
     private void loadSound() {
         try {
-            File f = new File("C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Backsound Game\\move.wav"); // Cukup nama file
+            File f = new File("move.wav");
             if (f.exists()) {
                 AudioInputStream ais = AudioSystem.getAudioInputStream(f);
                 moveClip = AudioSystem.getClip();
@@ -507,28 +612,24 @@ public class GameBoard extends JFrame {
         } catch (Exception e) {}
     }
 
-    // --- BARU: Method untuk memutar Backsound ---
     private void playBackgroundMusic() {
         try {
-            File f = new File("C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Backsound Game\\v4.www-y2mate.blog - Oreburgh City (Daytime) - Pokémon Diamond Pearl.wav"); // Pastikan file sudah convert ke WAV dan di folder project
+            File f = new File("C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Backsound Game\\Orerbugh City (Backsound Game).wav");
             if (f.exists()) {
                 AudioInputStream ais = AudioSystem.getAudioInputStream(f);
                 bgmClip = AudioSystem.getClip();
                 bgmClip.open(ais);
-
-                // Volume Adjust (-25dB)
                 try {
-                    FloatControl gain = (FloatControl) bgmClip.getControl(FloatControl.Type.MASTER_GAIN);
-                    gain.setValue(-25f);
+                    gainControl = (FloatControl) bgmClip.getControl(FloatControl.Type.MASTER_GAIN);
+                    gainControl.setValue(-25.0f);
                 } catch(Exception ex){}
-
                 bgmClip.loop(Clip.LOOP_CONTINUOUSLY);
                 bgmClip.start();
             } else {
-                System.err.println("File backsound.wav tidak ditemukan (Pastikan sudah convert ke WAV dan taruh di root project).");
+                System.err.println("File backsound.wav tidak ditemukan di root project.");
             }
         } catch (UnsupportedAudioFileException e) {
-            System.err.println("FORMAT AUDIO SALAH! Gunakan file .wav, bukan .mp3");
+            System.err.println("Format audio salah. Harap gunakan .wav");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -554,7 +655,6 @@ public class GameBoard extends JFrame {
                     2 * PAD_TOP + ROWS * NODE_DIAM + (ROWS - 1) * GAP));
 
             try {
-                // Gambar background juga di root project
                 File f = new File("3d-fantasy-scene.jpg");
                 if (f.exists()) {
                     backgroundImage = ImageIO.read(f);
