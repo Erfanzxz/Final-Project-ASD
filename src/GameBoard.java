@@ -4,14 +4,14 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
 import java.util.List;
-import javax.sound.sampled.*;
 import java.io.File;
 import java.io.IOException;
+import javax.imageio.ImageIO; // Penting untuk memuat gambar
+import javax.sound.sampled.*;
 
 public class GameBoard extends JFrame {
 
     // --- Font Definitions ---
-    // Menggunakan SansSerif dengan gaya modern sebagai pengganti Poppins agar 100% jalan
     private static final String FONT_FAMILY = "SansSerif";
     private static final Font POPS_BOLD = new Font(FONT_FAMILY, Font.BOLD, 18);
     private static final Font POPS_REGULAR = new Font(FONT_FAMILY, Font.PLAIN, 14);
@@ -22,7 +22,7 @@ public class GameBoard extends JFrame {
     private static final int TILE_COUNT = ROWS * COLS;
 
     // Visual sizes
-    private static final int NODE_DIAM = 55; // Ukuran Node Diperbesar
+    private static final int NODE_DIAM = 55; // Ukuran Node Besar
     private static final int GAP = 18;
     private static final int PAD_LEFT = 30;
     private static final int PAD_TOP = 30;
@@ -31,8 +31,8 @@ public class GameBoard extends JFrame {
     private static final int RIGHT_WIDTH = 380;
 
     // Colors
-    private static final Color BG_BLUE_DARK = new Color(40, 60, 140);
-    private static final Color BG_BLUE_MEDIUM = new Color(60, 90, 200);
+    private static final Color BG_BLUE_DARK = new Color(30, 45, 100); // Gelap Elegan
+    private static final Color BG_BLUE_MEDIUM = new Color(50, 70, 160); // Medium
 
     private static final Color TILE_COLOR_A = new Color(255, 245, 180);
     private static final Color TILE_COLOR_B = new Color(200, 230, 255);
@@ -40,7 +40,7 @@ public class GameBoard extends JFrame {
     private static final Color TRAIL_FORWARD = new Color(70, 200, 100, 150);
     private static final Color TRAIL_BACKWARD = new Color(255, 100, 100, 150);
     private static final Color SHORTCUT_COLOR = new Color(255, 200, 50, 220);
-    private static final Color EDGE_COLOR = new Color(80, 120, 200, 220);
+    private static final Color EDGE_COLOR = new Color(100, 130, 200, 180);
     private static final Color COIN_COLOR = new Color(255, 215, 0); // Emas Polos
 
     private static final Color PRIME_OUTLINE = new Color(0, 255, 255);
@@ -76,9 +76,8 @@ public class GameBoard extends JFrame {
     private final JTextArea logArea = new JTextArea();
 
     // Buttons & Layout Control
-    private JPanel rollTogglePanel; // Panel untuk swap tombol Roll/Next
-    private CardLayout cardLayout;  // Layout manager untuk swap
-
+    private JPanel rollTogglePanel;
+    private CardLayout cardLayout;
     private JButton rollButton;
     private JButton resetButton;
     private JButton nextGameButton;
@@ -95,22 +94,19 @@ public class GameBoard extends JFrame {
         super("FUN FAMILY GAME NIGHT");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        // Inisialisasi Tombol (Dibuat di sini agar final field aman)
+        // Inisialisasi Tombol
         rollButton = createRoundedButton("ROLL DICE", new Color(255, 120, 70), Color.WHITE);
         resetButton = createRoundedButton("RESET GAME", new Color(255, 190, 50), Color.BLACK);
         nextGameButton = createRoundedButton("NEXT GAME", new Color(100, 180, 100), Color.WHITE);
 
-        // Setup Awal
         askPlayerDetails();
         initScores();
         initState();
         generateShortcuts();
         loadSound();
 
-        // Setup UI
         initUI();
 
-        // Finalisasi Frame
         pack();
         setResizable(false);
         setLocationRelativeTo(null);
@@ -120,7 +116,6 @@ public class GameBoard extends JFrame {
         updateTurnLabel();
     }
 
-    // --- TOMBOL BULAT ---
     private JButton createRoundedButton(String text, Color bgColor, Color fgColor) {
         JButton button = new JButton(text) {
             @Override
@@ -158,7 +153,6 @@ public class GameBoard extends JFrame {
         if (sel == null) System.exit(0);
         playerCount = Integer.parseInt(sel);
 
-        // Panel Input Nama
         JPanel inputPanel = new JPanel();
         inputPanel.setLayout(new BoxLayout(inputPanel, BoxLayout.Y_AXIS));
         inputPanel.setBackground(BG_BLUE_MEDIUM);
@@ -253,7 +247,6 @@ public class GameBoard extends JFrame {
         controlPanel.add(Box.createVerticalStrut(20));
 
         // --- SETUP TOMBOL (CardLayout + FlowLayout) ---
-        // 1. Panel Swap untuk Roll / Next Game
         cardLayout = new CardLayout();
         rollTogglePanel = new JPanel(cardLayout);
         rollTogglePanel.setBackground(BG_BLUE_MEDIUM);
@@ -267,12 +260,11 @@ public class GameBoard extends JFrame {
         nextGameButton.addActionListener(e -> onNextGame());
         resetButton.addActionListener(e -> resetGame());
 
-        // 2. Baris Tombol (Roll/Next di kiri, Reset di kanan)
+        // Baris Tombol
         JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
         buttonRow.setBackground(BG_BLUE_MEDIUM);
         buttonRow.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // Ukuran tombol
         Dimension btnDim = new Dimension(140, 45);
         rollTogglePanel.setPreferredSize(btnDim);
         resetButton.setPreferredSize(btnDim);
@@ -285,7 +277,7 @@ public class GameBoard extends JFrame {
 
         // --- BOTTOM: Log ---
         logArea.setEditable(false);
-        logArea.setBackground(new Color(30, 40, 90));
+        logArea.setBackground(new Color(20, 30, 60));
         logArea.setForeground(Color.WHITE);
         logArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
         logArea.setMargin(new Insets(5,5,5,5));
@@ -340,7 +332,7 @@ public class GameBoard extends JFrame {
             int s = rnd.nextInt(TILE_COUNT - 15) + 2;
             int e = s + rnd.nextInt(20) + 5;
             if (e >= TILE_COUNT) continue;
-            if ((s-1)/COLS == (e-1)/COLS) continue; // beda baris
+            if ((s-1)/COLS == (e-1)/COLS) continue;
             if (!starts.contains(s)) {
                 shortcuts.put(s, e);
                 starts.add(s);
@@ -348,12 +340,11 @@ public class GameBoard extends JFrame {
         }
     }
 
-    // --- CORE LOGIC: Path Finding (Updated) ---
+    // --- CORE LOGIC: Path Finding ---
     private void onRoll() {
         if (animating) return;
-        rollButton.setEnabled(false); // Disable saat animasi dadu
+        rollButton.setEnabled(false);
 
-        // Animasi Dadu
         final int[] tick = {0};
         javax.swing.Timer diceTimer = new javax.swing.Timer(80, null);
         diceTimer.addActionListener(e -> {
@@ -371,7 +362,7 @@ public class GameBoard extends JFrame {
 
     private void finishRoll() {
         int roll = rnd.nextInt(6) + 1;
-        boolean forward = rnd.nextDouble() < 0.85; // 85% chance maju
+        boolean forward = rnd.nextDouble() < 0.85;
 
         dicePanel.show(roll, forward);
         log(playerNames[currentPlayer] + " rolls " + roll + " (" + (forward?"Forward":"Backward") + ")");
@@ -379,8 +370,6 @@ public class GameBoard extends JFrame {
         calculateMove(roll, forward);
     }
 
-    // LOGIKA DIJKSTRA / BEST PATH
-    // Mencari jalur yang memaksimalkan tile akhir dalam 'roll' langkah
     private void calculateMove(int roll, boolean forward) {
         stepQueue.clear();
         int start = playerPos[currentPlayer];
@@ -391,7 +380,6 @@ public class GameBoard extends JFrame {
             int dir = forward ? 1 : -1;
             int target = start + (dir * roll);
 
-            // Clamp target
             if (target < 1) target = 1;
             if (target > TILE_COUNT) target = TILE_COUNT;
 
@@ -401,10 +389,7 @@ public class GameBoard extends JFrame {
             }
         }
         else {
-            // Jika MAJU dan UNLOCKED: Cari jalur terbaik (terjauh)
-            // BFS untuk mencari node terjauh yang bisa dicapai dalam 'roll' langkah
-            // Node menyimpan: currentTile, pathHistory
-
+            // BFS untuk mencari node terjauh (Shortcut Logic)
             class PathNode {
                 int tile;
                 List<Integer> path;
@@ -424,7 +409,6 @@ public class GameBoard extends JFrame {
                     PathNode current = queue.poll();
                     int u = current.tile;
 
-                    // Possible moves from u:
                     // 1. Linear (u + 1)
                     if (u + 1 <= TILE_COUNT) {
                         List<Integer> nextPath = new ArrayList<>(current.path);
@@ -443,7 +427,6 @@ public class GameBoard extends JFrame {
                 steps++;
             }
 
-            // Setelah 'roll' langkah, cari node dengan tile terbesar di queue
             for (PathNode node : queue) {
                 if (node.tile > maxTileReached) {
                     maxTileReached = node.tile;
@@ -453,16 +436,10 @@ public class GameBoard extends JFrame {
 
             if (bestPath != null) {
                 stepQueue.addAll(bestPath);
-                // Cek shortcut usage untuk log
-                for (int i=0; i<bestPath.size()-1; i++) {
-                    // Start path mungkin perlu dicek relative ke node sebelumnya
-                    // Tapi di sini logikanya sudah path murni
-                }
                 if (maxTileReached > start + roll) {
                     log("⚡ Shortcut taken! Skipping ahead!");
                 }
             } else {
-                // Fallback if blocked (shouldn't happen)
                 for(int i=1; i<=roll; i++) if(start+i <= TILE_COUNT) stepQueue.add(start+i);
             }
         }
@@ -488,17 +465,14 @@ public class GameBoard extends JFrame {
 
             int nextTile = stepQueue.get(stepIndex);
 
-            // Play Sound
             if (moveClip != null) {
                 moveClip.setFramePosition(0);
                 moveClip.start();
             }
 
-            // Update Posisi
             int prevTile = playerPos[currentPlayer];
             playerPos[currentPlayer] = nextTile;
 
-            // Trail logic
             boolean isJump = Math.abs(nextTile - prevTile) > 1;
             if (!isJump) {
                 boardCanvas.setTrail(nextTile, forward ? TRAIL_FORWARD : TRAIL_BACKWARD);
@@ -515,7 +489,6 @@ public class GameBoard extends JFrame {
         int pos = playerPos[currentPlayer];
         String pName = playerNames[currentPlayer];
 
-        // 1. Cek Koin
         if (coinValues.containsKey(pos) && !coinCollected.get(pos)) {
             int val = coinValues.get(pos);
             playerScores[currentPlayer] += val;
@@ -525,15 +498,13 @@ public class GameBoard extends JFrame {
             boardCanvas.repaint();
         }
 
-        // 2. Cek Prime (Unlock)
         if (isPrime(pos)) {
             if (!unlocked[currentPlayer]) {
                 unlocked[currentPlayer] = true;
-                log("🔓 " + pName + " unlocked shortcuts (Prime Node)!");
+                log("🔓 " + pName + " unlocked shortcuts!");
             }
         }
 
-        // 3. Cek Menang
         if (pos >= TILE_COUNT) {
             log("🏆 " + pName + " WINS!");
             WIN_SCORES.put(pName, WIN_SCORES.get(pName) + 1);
@@ -541,21 +512,18 @@ public class GameBoard extends JFrame {
 
             JOptionPane.showMessageDialog(this, pName + " Menang! Skor Akhir: " + playerScores[currentPlayer]);
 
-            // Switch tombol ke Next Game
             cardLayout.show(rollTogglePanel, "NextGame");
             rollButton.setEnabled(false);
             return;
         }
 
-        // 4. Cek Kelipatan 5 (Extra Turn)
         if (pos % 5 == 0) {
-            log("✨ " + pName + " gets extra turn (Multiple of 5)!");
+            log("✨ " + pName + " gets extra turn!");
             rollButton.setEnabled(true);
             updateTurnLabel();
             return;
         }
 
-        // Next Player
         currentPlayer = (currentPlayer + 1) % playerCount;
         updateTurnLabel();
         rollButton.setEnabled(true);
@@ -578,9 +546,8 @@ public class GameBoard extends JFrame {
         updateTurnLabel();
         dicePanel.show(1, true);
 
-        // RESET TOMBOL KE ROLL
         cardLayout.show(rollTogglePanel, "Roll");
-        rollButton.setEnabled(true); // Pastikan aktif
+        rollButton.setEnabled(true);
 
         log("\n--- GAME RESET ---");
         log(playerNames[0] + "'s turn.");
@@ -614,101 +581,136 @@ public class GameBoard extends JFrame {
         return true;
     }
 
-    // --- INNER CLASSES ---
-
+    // -------------------- BoardCanvas (INNER CLASS) --------------------
     private class BoardCanvas extends JPanel {
         private final Color[] trails = new Color[TILE_COUNT+1];
+        private Image backgroundImage;
 
-        void clearTrails() { Arrays.fill(trails, null); }
-        void setTrail(int i, Color c) { if (i<=TILE_COUNT) trails[i] = c; }
+        BoardCanvas() {
+            // Set default background color
+            setBackground(BG_BLUE_MEDIUM);
+            setPreferredSize(new Dimension(
+                    2 * PAD_LEFT + COLS * NODE_DIAM + (COLS - 1) * GAP,
+                    2 * PAD_TOP + ROWS * NODE_DIAM + (ROWS - 1) * GAP));
+
+            // Load Image
+            try {
+                // Pastikan file ini ada di folder project (sejajar src)
+                backgroundImage = ImageIO.read(new File("C:\\Users\\USER\\IdeaProjects\\ASD FINAL BOSS\\Background\\3d-fantasy-scene.jpg"));
+            } catch (IOException e) {
+                System.err.println("Gambar tidak ditemukan, menggunakan warna polos.");
+            }
+        }
+
+        void clearTrails() {
+            Arrays.fill(trails, null);
+        }
+
+        void setTrail(int tile, Color c) {
+            if (tile >= 1 && tile <= TILE_COUNT) trails[tile] = c;
+        }
 
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
-            Graphics2D g2 = (Graphics2D) g;
+            Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            // Draw Background Image or Color
+            if (backgroundImage != null) {
+                g2.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+            } else {
+                g2.setColor(BG_BLUE_DARK);
+                g2.fillRect(0, 0, getWidth(), getHeight());
+            }
 
             // Draw Edges
             g2.setColor(EDGE_COLOR);
             g2.setStroke(new BasicStroke(2));
-            for (int i=1; i<TILE_COUNT; i++) {
-                Point p1 = getTileCenter(i);
-                Point p2 = getTileCenter(i+1);
-                g2.drawLine(p1.x, p1.y, p2.x, p2.y);
+            for (int n = 1; n < TILE_COUNT; n++) {
+                Point a = getTileCenter(n);
+                Point b = getTileCenter(n + 1);
+                g2.drawLine(a.x, a.y, b.x, b.y);
             }
 
             // Draw Shortcuts
             g2.setColor(SHORTCUT_COLOR);
             g2.setStroke(new BasicStroke(4));
             for (Map.Entry<Integer, Integer> e : shortcuts.entrySet()) {
-                Point p1 = getTileCenter(e.getKey());
-                Point p2 = getTileCenter(e.getValue());
-                g2.drawLine(p1.x, p1.y, p2.x, p2.y);
+                Point a = getTileCenter(e.getKey());
+                Point b = getTileCenter(e.getValue());
+                g2.drawLine(a.x, a.y, b.x, b.y);
             }
 
             // Draw Nodes
-            for (int i=1; i<=TILE_COUNT; i++) {
-                Point p = getTileCenter(i);
+            for (int node = 1; node <= TILE_COUNT; node++) {
+                Point p = getTileCenter(node);
                 int r = NODE_DIAM / 2;
 
-                // Color pattern
-                int row = (i-1)/COLS;
-                int col = (i-1)%COLS;
-                if (row%2!=0) col = COLS-1-col;
-                g2.setColor(((row+col)%2==0) ? TILE_COLOR_A : TILE_COLOR_B);
-                g2.fillOval(p.x-r, p.y-r, NODE_DIAM, NODE_DIAM);
+                Color baseColor;
+                int logicalRow = (node - 1) / COLS;
+                int logicalCol = (node - 1) % COLS;
+                boolean leftToRight = (logicalRow % 2 == 0);
+                int drawCol = leftToRight ? logicalCol : (COLS - 1 - logicalCol);
+                int drawRow = logicalRow;
 
-                // Trail
-                if (trails[i] != null) {
-                    g2.setColor(trails[i]);
-                    g2.fillOval(p.x-r, p.y-r, NODE_DIAM, NODE_DIAM);
+                if ((drawRow + drawCol) % 2 == 0) baseColor = TILE_COLOR_A;
+                else baseColor = TILE_COLOR_B;
+
+                g2.setColor(baseColor);
+                g2.fillOval(p.x - r, p.y - r, NODE_DIAM, NODE_DIAM);
+
+                if (trails[node] != null) {
+                    g2.setColor(trails[node]);
+                    g2.fillOval(p.x - r, p.y - r, NODE_DIAM, NODE_DIAM);
                 }
 
                 // Coin (Polos Kuning)
-                if (coinValues.containsKey(i) && !coinCollected.get(i)) {
+                if (coinValues.containsKey(node) && !coinCollected.get(node)) {
                     g2.setColor(COIN_COLOR);
                     int cr = r - 8;
-                    g2.fillOval(p.x-cr, p.y-cr, cr*2, cr*2);
+                    g2.fillOval(p.x - cr, p.y - cr, cr*2, cr*2);
                 }
 
-                // Outlines
                 g2.setStroke(new BasicStroke(3));
-                if (isPrime(i)) {
+                if (isPrime(node)) {
                     g2.setColor(PRIME_OUTLINE);
-                    g2.drawOval(p.x-r, p.y-r, NODE_DIAM, NODE_DIAM);
-                } else if (i%5==0) {
+                    g2.drawOval(p.x - r, p.y - r, NODE_DIAM, NODE_DIAM);
+                } else if (node % 5 == 0) {
                     g2.setColor(MULT5_OUTLINE);
-                    g2.drawOval(p.x-r, p.y-r, NODE_DIAM, NODE_DIAM);
+                    g2.drawOval(p.x - r, p.y - r, NODE_DIAM, NODE_DIAM);
                 } else {
                     g2.setColor(Color.GRAY);
                     g2.setStroke(new BasicStroke(1));
-                    g2.drawOval(p.x-r, p.y-r, NODE_DIAM, NODE_DIAM);
+                    g2.drawOval(p.x - r, p.y - r, NODE_DIAM, NODE_DIAM);
                 }
 
-                // Text
                 g2.setColor(Color.BLACK);
                 g2.setFont(POPS_BOLD.deriveFont(12f));
-                String s = String.valueOf(i);
+                String label = String.valueOf(node);
                 FontMetrics fm = g2.getFontMetrics();
-                g2.drawString(s, p.x - fm.stringWidth(s)/2, p.y + fm.getAscent()/2 - 2);
+                g2.drawString(label, p.x - fm.stringWidth(label)/2, p.y + fm.getAscent()/2 - 2);
             }
 
             // Draw Players
-            for (int i=0; i<playerCount; i++) {
-                Point p = getTileCenter(playerPos[i]);
-                int offX = (i%2==0 ? -10 : 10);
-                int offY = (i/2==0 ? -10 : 10);
+            for (int p = 0; p < playerCount; p++) {
+                Point c = getTileCenter(playerPos[p]);
+                int offX = (p % 2 == 0) ? -10 : 10;
+                int offY = (p / 2 == 0) ? -10 : 10;
 
-                g2.setColor(PLAYER_COLORS[i]);
-                g2.fillOval(p.x+offX-8, p.y+offY-8, 16, 16);
+                g2.setColor(PLAYER_COLORS[p]);
+                g2.fillOval(c.x + offX - 8, c.y + offY - 8, 16, 16);
                 g2.setColor(Color.BLACK);
                 g2.setStroke(new BasicStroke(1));
-                g2.drawOval(p.x+offX-8, p.y+offY-8, 16, 16);
+                g2.drawOval(c.x + offX - 8, c.y + offY - 8, 16, 16);
             }
+
+            g2.dispose();
         }
 
-        private Point getTileCenter(int i) {
-            int idx = i - 1;
+        // Helper untuk mendapatkan koordinat tengah tile
+        private Point getTileCenter(int node) {
+            int idx = node - 1;
             int r = idx / COLS;
             int c = idx % COLS;
             if (r % 2 != 0) c = COLS - 1 - c;
@@ -722,6 +724,7 @@ public class GameBoard extends JFrame {
 
     private class DicePanel extends JPanel {
         int val = 1; boolean fwd = true;
+        DicePanel() { setBackground(BG_BLUE_DARK); }
         void show(int v, boolean f) { val=v; fwd=f; repaint(); }
 
         @Override
@@ -742,7 +745,6 @@ public class GameBoard extends JFrame {
 
             g2.setColor(Color.BLACK);
             int pip = sz/6;
-            // Simple logic for pips
             if(val%2!=0) fillPip(g2, x+sz/2, y+sz/2, pip);
             if(val>1) { fillPip(g2, x+sz/4, y+sz/4, pip); fillPip(g2, x+3*sz/4, y+3*sz/4, pip); }
             if(val>3) { fillPip(g2, x+3*sz/4, y+sz/4, pip); fillPip(g2, x+sz/4, y+3*sz/4, pip); }
@@ -764,7 +766,6 @@ public class GameBoard extends JFrame {
 
             g.setFont(POPS_REGULAR.deriveFont(12f));
             int y = 45;
-            // Tampilkan Data Realtime
             List<Map.Entry<String, Integer>> wins = new ArrayList<>(WIN_SCORES.entrySet());
             wins.sort((a,b) -> b.getValue() - a.getValue());
 
