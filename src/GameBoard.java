@@ -1,5 +1,6 @@
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import java.awt.*;
@@ -32,6 +33,7 @@ public class GameBoard extends JFrame {
                 throw new IOException("Font file not found");
             }
         } catch (Exception e) {
+            // Fallback ke SansSerif jika font tidak ada
             POPS_BOLD = new Font("SansSerif", Font.BOLD, 14);
             POPS_REGULAR = new Font("SansSerif", Font.PLAIN, 10);
         }
@@ -43,15 +45,15 @@ public class GameBoard extends JFrame {
     private static final int TILE_COUNT = ROWS * COLS;
 
     // --- UKURAN VISUAL ---
-    private static final int NODE_DIAM = 80;
+    private static final int NODE_DIAM = 55;
     private static final int GAP = 18;
     private static final int PAD_LEFT = 30;
     private static final int PAD_TOP = 30;
     private static final int RIGHT_WIDTH = 380;
 
     // Ukuran Gambar Player di Board
-    private static final int CHAR_WIDTH = 45;
-    private static final int CHAR_HEIGHT = 45;
+    private static final int CHAR_WIDTH = 40;
+    private static final int CHAR_HEIGHT = 40;
 
     // --- PALET WARNA ---
     private static final Color BG_BLUE_DARK = new Color(0, 66, 69);
@@ -74,7 +76,7 @@ public class GameBoard extends JFrame {
     // --- DATA KARAKTER (PATH UPDATED) ---
     private static final String[] CHAR_NAMES = {"Mario", "Luigi", "Waluigi", "Yossi"};
 
-    // Path Absolute sesuai request (Double Backslash \\ wajib di Java String)
+    // Path Absolute sesuai request
     private static final String[] CHAR_FILES = {
             "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Player Character\\mario.png",
             "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Player Character\\luigi.png",
@@ -83,6 +85,8 @@ public class GameBoard extends JFrame {
     };
 
     private String[] selectedCharFiles = new String[4]; // Menyimpan file png yang dipilih tiap player
+    // Array untuk menyimpan gambar pemain yang sudah di-load (Dipindahkan ke sini agar bisa diakses panel giliran)
+    private final Image[] playerImages = new Image[4];
 
     // --- DATA GAME ---
     private static final Map<String, Integer> WIN_SCORES = new HashMap<>();
@@ -103,7 +107,8 @@ public class GameBoard extends JFrame {
     private final BoardCanvas boardCanvas;
     private final DicePanel dicePanel = new DicePanel();
     private final StatsPanel statsPanel = new StatsPanel();
-    private final JLabel turnLabel = new JLabel();
+    // Mengganti JLabel sederhana dengan Panel Kustom baru
+    private final PlayerTurnPanel turnPanel = new PlayerTurnPanel();
     private final JTextArea logArea = new JTextArea();
 
     // Kontrol Tombol & Layout
@@ -136,8 +141,10 @@ public class GameBoard extends JFrame {
 
         // 1. Setup Pemain & Karakter (Dialog Besar)
         askPlayerDetailsAndCharacters();
+        // Load gambar-gambar karakter yang terpilih ke memori
+        reloadPlayerImages();
 
-        // 2. Inisialisasi Canvas (Setelah gambar dipilih)
+        // 2. Inisialisasi Canvas
         boardCanvas = new BoardCanvas();
 
         initScores();
@@ -155,8 +162,32 @@ public class GameBoard extends JFrame {
         setVisible(true);
 
         log("Game started! " + playerNames[0] + "'s turn.");
-        updateTurnLabel();
+        // Update panel giliran untuk pertama kali
+        updateTurnPanelUI();
     }
+
+    // Metode baru untuk memuat gambar karakter berdasarkan pilihan
+    private void reloadPlayerImages() {
+        Arrays.fill(playerImages, null); // Bersihkan dulu
+        for (int i = 0; i < playerCount; i++) {
+            try {
+                String fname = selectedCharFiles[i];
+                if(fname != null) {
+                    File f = new File(fname);
+                    if (f.exists()) playerImages[i] = ImageIO.read(f);
+                    else System.err.println("File char not found: " + fname);
+                }
+            } catch (IOException e) {
+                System.err.println("Error loading char image");
+            }
+        }
+    }
+
+    // Helper untuk memanggil update pada panel giliran
+    private void updateTurnPanelUI() {
+        turnPanel.updateTurn(currentPlayer, playerNames[currentPlayer], playerScores[currentPlayer]);
+    }
+
 
     // --- HELPER UI ---
     private JButton createRoundedButton(String text, Color bgColor, Color fgColor) {
@@ -185,7 +216,7 @@ public class GameBoard extends JFrame {
         return button;
     }
 
-    // --- SETUP PEMAIN & KARAKTER (UPDATE) ---
+    // --- SETUP PEMAIN & KARAKTER ---
     private void askPlayerDetailsAndCharacters() {
         // 1. Tanya Jumlah Pemain
         String[] options = {"2", "3", "4"};
@@ -196,7 +227,7 @@ public class GameBoard extends JFrame {
                 JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
 
         if (choice == -1) System.exit(0);
-        playerCount = choice + 2; // index 0->2 pemain, 1->3 pemain, dst.
+        playerCount = choice + 2;
 
         // 2. Dialog Custom Besar
         JDialog dialog = new JDialog((Frame)null, "Setup Player & Character", true);
@@ -246,11 +277,9 @@ public class GameBoard extends JFrame {
             imagePreview.setHorizontalAlignment(SwingConstants.CENTER);
             imagePreview.setBorder(BorderFactory.createLineBorder(Color.WHITE, 1));
 
-            // Update Preview saat combo box berubah
             final int pIndex = i;
             charCombos[i].addActionListener(e -> updatePreview(imagePreview, (String)charCombos[pIndex].getSelectedItem()));
 
-            // Set initial preview
             updatePreview(imagePreview, CHAR_NAMES[i]);
 
             rowPanel.add(lbl);
@@ -417,11 +446,16 @@ public class GameBoard extends JFrame {
         controlPanel.setBackground(BG_BLUE_MEDIUM);
         controlPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
 
-        turnLabel.setForeground(Color.WHITE);
-        turnLabel.setFont(POPS_BOLD);
-        turnLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        controlPanel.add(turnLabel);
-        controlPanel.add(Box.createVerticalStrut(10));
+        // --- PENGGANTIAN LABEL LAMA DENGAN PANEL BARU ---
+        // turnLabel.setForeground(Color.WHITE);  <-- HAPUS INI
+        // turnLabel.setFont(POPS_BOLD);          <-- HAPUS INI
+        // turnLabel.setAlignmentX(Component.CENTER_ALIGNMENT); <-- HAPUS INI
+        // controlPanel.add(turnLabel);           <-- HAPUS INI
+
+        // Tambahkan Panel Giliran yang Baru
+        controlPanel.add(turnPanel);
+        controlPanel.add(Box.createVerticalStrut(20));
+        // -----------------------------------------------
 
         // ADD SOUND CONTROLS
         controlPanel.add(createSoundControlPanel());
@@ -669,12 +703,14 @@ public class GameBoard extends JFrame {
         if (pos % 5 == 0) {
             log("✨ " + pName + " gets extra turn!");
             rollButton.setEnabled(true);
-            updateTurnLabel();
+            // Update panel giliran (skor mungkin berubah)
+            updateTurnPanelUI();
             return;
         }
         // Next Player
         currentPlayer = (currentPlayer + 1) % playerCount;
-        updateTurnLabel();
+        // Update panel giliran ke pemain berikutnya
+        updateTurnPanelUI();
         rollButton.setEnabled(true);
     }
 
@@ -684,17 +720,16 @@ public class GameBoard extends JFrame {
         if (stepTimer != null) stepTimer.stop();
         animating = false;
 
-        // Show dialog again for new game if desired, or just reset state
         askPlayerDetailsAndCharacters();
-        // Reload images based on new selection
-        boardCanvas.reloadImages();
+        reloadPlayerImages(); // Reload gambar karena pilihan mungkin berubah
 
         initState();
         generateShortcuts();
         currentPlayer = 0;
         boardCanvas.clearTrails();
         boardCanvas.repaint();
-        updateTurnLabel();
+        // Update panel giliran untuk pemain awal
+        updateTurnPanelUI();
         dicePanel.show(1, true);
 
         cardLayout.show(rollTogglePanel, "Roll");
@@ -703,9 +738,10 @@ public class GameBoard extends JFrame {
         log(playerNames[0] + "'s turn.");
     }
 
-    private void updateTurnLabel() {
-        turnLabel.setText("GILIRAN: " + playerNames[currentPlayer] + " (Score: " + playerScores[currentPlayer] + ")");
-    }
+    // Metode updateTurnLabel yang lama DIHAPUS
+    // private void updateTurnLabel() {
+    //     turnLabel.setText("GILIRAN: " + playerNames[currentPlayer] + " (Score: " + playerScores[currentPlayer] + ")");
+    // }
 
     private void log(String txt) {
         logArea.append(txt + "\n");
@@ -726,7 +762,7 @@ public class GameBoard extends JFrame {
 
     private void playBackgroundMusic() {
         try {
-            File f = new File("backsound.wav");
+            File f = new File("C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Backsound Game\\Orerbugh City (Backsound Game).wav");
             if (f.exists()) {
                 AudioInputStream ais = AudioSystem.getAudioInputStream(f);
                 bgmClip = AudioSystem.getClip();
@@ -757,11 +793,74 @@ public class GameBoard extends JFrame {
         return true;
     }
 
-    // -------------------- BoardCanvas (INNER CLASS) --------------------
+    // -------------------- INNER CLASSES --------------------
+
+    // --- KELAS BARU: PANEL GILIRAN PEMAIN KUSTOM ---
+    private class PlayerTurnPanel extends JPanel {
+        private final JLabel lblTitle = new JLabel("PLAYER TURN");
+        private final JLabel lblImage = new JLabel();
+        private final JLabel lblInfo = new JLabel();
+        private final Color maroonColor = new Color(128, 0, 0);
+
+        public PlayerTurnPanel() {
+            // Setup Layout & Style agar mirip dengan contoh gambar
+
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.insets = new Insets(5, 10, 5, 10);
+
+            // 1. Judul "PLAYER TURN"
+            lblTitle.setFont(POPS_BOLD.deriveFont(16f));
+            lblTitle.setForeground(Color.BLACK);
+            gbc.gridx = 0; gbc.gridy = 0;
+            gbc.gridwidth = 2; // Span 2 kolom
+            gbc.anchor = GridBagConstraints.WEST;
+            add(lblTitle, gbc);
+
+            // 2. Gambar Karakter (Kiri)
+            lblImage.setPreferredSize(new Dimension(50, 50));
+            lblImage.setHorizontalAlignment(SwingConstants.CENTER);
+            gbc.gridx = 0; gbc.gridy = 1;
+            gbc.gridwidth = 1;
+            gbc.anchor = GridBagConstraints.CENTER;
+            add(lblImage, gbc);
+
+            // 3. Teks Nama & Skor (Kanan)
+            lblInfo.setFont(POPS_REGULAR.deriveFont(18f));
+            lblInfo.setForeground(maroonColor); // Warna teks merah marun
+            gbc.gridx = 1; gbc.gridy = 1;
+            gbc.anchor = GridBagConstraints.WEST;
+            gbc.weightx = 1.0; // Isi sisa ruang horizontal
+            add(lblInfo, gbc);
+        }
+
+        // Metode untuk memperbarui tampilan panel secara dinamis
+        public void updateTurn(int playerIndex, String playerName, int score) {
+            // Update Gambar
+            if (playerIndex >= 0 && playerIndex < playerImages.length) {
+                Image img = playerImages[playerIndex];
+                if (img != null) {
+                    // Ubah ukuran gambar jadi ikon kecil
+                    ImageIcon icon = new ImageIcon(img.getScaledInstance(50, 50, Image.SCALE_SMOOTH));
+                    lblImage.setIcon(icon);
+                } else {
+                    lblImage.setIcon(null); // Kosongkan jika gambar tidak ada
+                }
+            }
+
+            // Update Teks
+            lblInfo.setText(playerName + " : (Score : " + score + ")");
+
+            // Refresh panel agar perubahan terlihat
+            revalidate();
+            repaint();
+        }
+    }
+
+
     private class BoardCanvas extends JPanel {
         private final Color[] trails = new Color[TILE_COUNT+1];
         private Image backgroundImage;
-        private Image[] playerImages = new Image[4];
+        // Note: playerImages sekarang ada di outer class GameBoard
 
         BoardCanvas() {
             setBackground(BG_BLUE_MEDIUM);
@@ -775,24 +874,7 @@ public class GameBoard extends JFrame {
                 if (f.exists()) backgroundImage = ImageIO.read(f);
             } catch (IOException e) {}
 
-            reloadImages();
-        }
-
-        // Dipanggil saat game start/reset untuk memuat ulang gambar sesuai pilihan
-        void reloadImages() {
-            for (int i = 0; i < 4; i++) {
-                try {
-                    // Load gambar sesuai pilihan di array selectedCharFiles
-                    String fname = selectedCharFiles[i];
-                    if(fname != null) {
-                        File f = new File(fname);
-                        if (f.exists()) playerImages[i] = ImageIO.read(f);
-                        else System.err.println("File char not found: " + fname);
-                    }
-                } catch (IOException e) {
-                    System.err.println("Error loading char image");
-                }
-            }
+            // Gambar pemain sekarang diload di GameBoard
         }
 
         void clearTrails() { Arrays.fill(trails, null); }
@@ -869,7 +951,7 @@ public class GameBoard extends JFrame {
                 g2.drawString(label, p.x - fm.stringWidth(label)/2, p.y + fm.getAscent()/2 - 2);
             }
 
-            // Draw Players (Image or Circle)
+            // Draw Players (Image or Circle) - Menggunakan array dari outer class
             for (int p = 0; p < playerCount; p++) {
                 Point c = getTileCenter(playerPos[p]);
                 int offX = (p % 2 == 0) ? -10 : 10;
