@@ -19,20 +19,22 @@ public class GameBoard extends JFrame {
 
     private static final String ROOT_PATH = "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\";
 
-    // File Koordinat (Otomatis dibaca dari hasil Map Editor)
+    // File Koordinat
     private static final String COORD_FILE = "coordinates.txt";
 
     // Font
     private static final String PATH_FONT = ROOT_PATH + "FONT\\Clash Royale.ttf";
 
-    //Image
-    private static final String PATH_BG_IMG = "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Background Game\\Game Background.png"; //Background Board
-    private static final String PATH_COIN_IMG = ROOT_PATH + "Player Character\\coinMario.png"; //Character
+    // Images
+    private static final String PATH_BG_IMG = "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Background Game\\Game Background.png";
+    private static final String PATH_COIN_IMG = ROOT_PATH + "Player Character\\coinMario.png";
+    private static final String PATH_ICON_ON = ROOT_PATH + "Backsound Game\\sound_on.png";
+    private static final String PATH_ICON_OFF = ROOT_PATH + "Backsound Game\\sound_off.png";
 
     // Audio
-    private static final String PATH_BGM = ROOT_PATH + "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Backsound Game\\Orerbugh City (Backsound Game).wav";
-    private static final String PATH_SFX_MOVE = ROOT_PATH + "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Backsound Game\\move.wav";
-    private static final String PATH_SFX_COIN = ROOT_PATH + "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Backsound Game\\Mario Coin Sound - Sound Effect (HD) - Gaming Sound FX.wav";
+    private static final String PATH_BGM = ROOT_PATH + "Backsound Game\\Orerbugh City (Backsound Game).wav";
+    private static final String PATH_SFX_MOVE = ROOT_PATH + "Backsound Game\\move.wav";
+    private static final String PATH_SFX_COIN = ROOT_PATH + "Backsound Game\\Mario Coin Sound - Sound Effect (HD) - Gaming Sound FX.wav";
 
     // Characters
     private static final String[] CHAR_FILES = {
@@ -67,9 +69,9 @@ public class GameBoard extends JFrame {
         }
     }
 
-    // --- CONFIG UKURAN (FIXED SIZE AGAR PRESISI DENGAN EDITOR) ---
-    private static final int BOARD_WIDTH = 890;  // Lebar Board (Kiri)
-    private static final int BOARD_HEIGHT = 825; // Tinggi Board (Kiri)
+    // --- CONFIG ---
+    private static final int BOARD_WIDTH = 890;
+    private static final int BOARD_HEIGHT = 825;
 
     private static final int ROWS = 10;
     private static final int COLS = 10;
@@ -78,7 +80,7 @@ public class GameBoard extends JFrame {
     private static final int GAP = 15;
     private static final int PAD_LEFT = 30;
     private static final int PAD_TOP = 30;
-    private static final int RIGHT_WIDTH = 380; // Lebar Panel Kanan
+    private static final int RIGHT_WIDTH = 380;
     private static final int CHAR_WIDTH = 35;
     private static final int CHAR_HEIGHT = 35;
     private static final int COIN_ICON_SIZE = 25;
@@ -123,7 +125,7 @@ public class GameBoard extends JFrame {
     private final BoardCanvas boardCanvas;
     private final DicePanel dicePanel = new DicePanel();
     private final StatsPanel statsPanel = new StatsPanel();
-    private final PlayerTurnPanel turnPanel = new PlayerTurnPanel();
+    private final PlayerTurnPanel turnPanel; // Diinisialisasi di constructor
     private final JTextArea logArea = new JTextArea();
 
     private JPanel rollTogglePanel;
@@ -147,7 +149,10 @@ public class GameBoard extends JFrame {
         super("FUN FAMILY GAME NIGHT");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        // Cek file koordinat
+        // Init Panels
+        turnPanel = new PlayerTurnPanel(); // Inisialisasi di sini agar tidak null
+
+        // Check Coordinates
         File coordCheck = new File(COORD_FILE);
         if (!coordCheck.exists()) {
             System.out.println("INFO: File 'coordinates.txt' tidak ditemukan. Menggunakan grid default.");
@@ -180,7 +185,6 @@ public class GameBoard extends JFrame {
         updateTurnPanelUI();
     }
 
-    // --- IMAGE LOADER ---
     private Image safeLoadImage(String path) {
         if (path == null || path.isEmpty()) return null;
         try { File f = new File(path); if (f.exists()) return ImageIO.read(f); } catch (IOException e) {} return null;
@@ -197,9 +201,7 @@ public class GameBoard extends JFrame {
         turnPanel.updateTurn(currentPlayer, playerNames[currentPlayer], playerScores[currentPlayer]);
     }
 
-    // --- INIT UI (DENGAN UKURAN FIXED) ---
     private void initUI() {
-        // SET UKURAN CANVAS SECARA MANUAL (AGAR SAMA DENGAN MAP EDITOR)
         boardCanvas.setPreferredSize(new Dimension(BOARD_WIDTH, BOARD_HEIGHT));
 
         JPanel rightPanel = new JPanel(new BorderLayout());
@@ -270,13 +272,12 @@ public class GameBoard extends JFrame {
         rollButton.setEnabled(true);
     }
 
-    // --- PLAYER SETUP ---
     private void askPlayerDetailsAndCharacters() {
         String[] options = {"2", "3", "4"};
         UIManager.put("OptionPane.messageFont", POPS_REGULAR);
         UIManager.put("OptionPane.buttonFont", POPS_BOLD.deriveFont(12f));
 
-        int choice = JOptionPane.showOptionDialog(null, "Berapa jumlah pemain?", "Setup Game", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+        int choice = JOptionPane.showOptionDialog(null, "Berapa banyak pemain?", "Setup Game", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
         if (choice == -1) System.exit(0);
         playerCount = choice + 2;
 
@@ -359,34 +360,81 @@ public class GameBoard extends JFrame {
         else label.setIcon(null);
     }
 
-    // --- SOUND CONTROL ---
     private JPanel createSoundControlPanel() {
         JPanel soundPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
         soundPanel.setBackground(BG_BLUE_MEDIUM);
         soundPanel.setBorder(new EmptyBorder(0, 0, 10, 0));
-        JButton muteButton = new JButton("🔊");
-        muteButton.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 16));
+
+        // --- LOAD ICON ---
+        ImageIcon iconOn = null;
+        ImageIcon iconOff = null;
+        int iconSize = 25;
+        try {
+            File fOn = new File(PATH_ICON_ON);
+            if (fOn.exists()) {
+                Image img = ImageIO.read(fOn);
+                iconOn = new ImageIcon(img.getScaledInstance(iconSize, iconSize, Image.SCALE_SMOOTH));
+            }
+            File fOff = new File(PATH_ICON_OFF);
+            if (fOff.exists()) {
+                Image img = ImageIO.read(fOff);
+                iconOff = new ImageIcon(img.getScaledInstance(iconSize, iconSize, Image.SCALE_SMOOTH));
+            }
+        } catch (Exception e) {}
+
+        JButton muteButton = new JButton();
+        muteButton.setPreferredSize(new Dimension(40, 30));
         muteButton.setFocusPainted(false);
         muteButton.setBackground(Color.WHITE);
-        muteButton.setPreferredSize(new Dimension(50, 30));
+        muteButton.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+        if (iconOn != null) muteButton.setIcon(iconOn);
+        else muteButton.setText("🔊");
+
         JSlider volumeSlider = new JSlider(-60, 6, -20);
         volumeSlider.setPreferredSize(new Dimension(150, 30));
         volumeSlider.setBackground(BG_BLUE_MEDIUM);
         volumeSlider.setForeground(Color.WHITE);
+
+        final ImageIcon finalIconOn = iconOn;
+        final ImageIcon finalIconOff = iconOff;
+
         volumeSlider.addChangeListener(e -> {
             if (gainControl != null) {
                 float value = volumeSlider.getValue();
-                if (value == -60) { gainControl.setValue(gainControl.getMinimum()); muteButton.setText("🔇"); isMuted = true; }
-                else { gainControl.setValue(value); muteButton.setText("🔊"); isMuted = false; previousVolume = value; }
+                if (value == -60) {
+                    gainControl.setValue(gainControl.getMinimum());
+                    if(finalIconOff!=null) muteButton.setIcon(finalIconOff); else muteButton.setText("🔇");
+                    isMuted = true;
+                } else {
+                    gainControl.setValue(value);
+                    if(finalIconOn!=null) muteButton.setIcon(finalIconOn); else muteButton.setText("🔊");
+                    isMuted = false;
+                    previousVolume = value;
+                }
             }
         });
+
         muteButton.addActionListener(e -> {
             if (gainControl != null) {
-                if (isMuted) { gainControl.setValue(previousVolume); volumeSlider.setValue((int) previousVolume); muteButton.setText("🔊"); isMuted = false; }
-                else { previousVolume = volumeSlider.getValue(); gainControl.setValue(gainControl.getMinimum()); volumeSlider.setValue(-60); muteButton.setText("🔇"); isMuted = true; }
+                if (isMuted) {
+                    gainControl.setValue(previousVolume);
+                    volumeSlider.setValue((int) previousVolume);
+                    if(finalIconOn!=null) muteButton.setIcon(finalIconOn); else muteButton.setText("🔊");
+                    isMuted = false;
+                } else {
+                    previousVolume = volumeSlider.getValue();
+                    gainControl.setValue(gainControl.getMinimum());
+                    volumeSlider.setValue(-60);
+                    if(finalIconOff!=null) muteButton.setIcon(finalIconOff); else muteButton.setText("🔇");
+                    isMuted = true;
+                }
             }
         });
-        soundPanel.add(new JLabel("Music: ") {{ setForeground(Color.WHITE); setFont(POPS_REGULAR); }});
+
+        JLabel lblMusic = new JLabel("Music: ");
+        lblMusic.setForeground(Color.WHITE);
+        lblMusic.setFont(POPS_REGULAR);
+        soundPanel.add(lblMusic);
         soundPanel.add(muteButton);
         soundPanel.add(volumeSlider);
         return soundPanel;
@@ -407,7 +455,6 @@ public class GameBoard extends JFrame {
         button.setOpaque(false); button.setContentAreaFilled(false); button.setFocusPainted(false); button.setBorderPainted(false); button.setForeground(fgColor); button.setFont(POPS_BOLD); return button;
     }
 
-    // --- AUDIO LOGIC ---
     private void loadSounds() {
         try {
             if (!PATH_SFX_MOVE.isEmpty()) {
@@ -440,7 +487,6 @@ public class GameBoard extends JFrame {
         } catch (Exception e) { e.printStackTrace(); }
     }
 
-    // --- GAME LOGIC ---
     private void onRoll() {
         if (animating) return;
         rollButton.setEnabled(false);
@@ -534,7 +580,8 @@ public class GameBoard extends JFrame {
     private boolean isPrime(int n) { if (n < 2) return false; for (int i = 2; i * i <= n; i++) if (n % i == 0) return false; return true; }
     private void log(String txt) { logArea.append(txt + "\n"); logArea.setCaretPosition(logArea.getDocument().getLength()); }
 
-    // --- BOARD CANVAS (READS COORDINATES.TXT) ---
+    // --- INNER CLASSES ---
+
     private class BoardCanvas extends JPanel {
         private final Color[] trails = new Color[TILE_COUNT + 1];
         private Image backgroundImage;
@@ -544,7 +591,6 @@ public class GameBoard extends JFrame {
 
         BoardCanvas() {
             setBackground(BG_BLUE_MEDIUM);
-            // UKURAN FIXED SESUAI EDITOR
             setPreferredSize(new Dimension(BOARD_WIDTH, BOARD_HEIGHT));
             backgroundImage = safeLoadImage(PATH_BG_IMG);
             coinImage = safeLoadImage(PATH_COIN_IMG);
@@ -566,9 +612,7 @@ public class GameBoard extends JFrame {
                     mapLoaded = true;
                 } catch (Exception e) { e.printStackTrace(); }
             }
-            if (!mapLoaded) { // Fallback Grid
-                for (int i = 1; i <= TILE_COUNT; i++) nodeCoordinates[i] = calculateGridPosition(i);
-            }
+            if (!mapLoaded) { for (int i = 1; i <= TILE_COUNT; i++) nodeCoordinates[i] = calculateGridPosition(i); }
         }
 
         private Point calculateGridPosition(int node) {
@@ -593,9 +637,6 @@ public class GameBoard extends JFrame {
 
             if (backgroundImage != null) g2.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
             else { g2.setColor(BG_BLUE_DARK); g2.fillRect(0, 0, getWidth(), getHeight()); }
-
-            g2.setColor(EDGE_COLOR); g2.setStroke(new BasicStroke(2));
-            for (int n = 1; n < TILE_COUNT; n++) { Point a = getNodeCenter(n); Point b = getNodeCenter(n + 1); g2.drawLine(a.x, a.y, b.x, b.y); }
 
             g2.setColor(SHORTCUT_COLOR); g2.setStroke(new BasicStroke(4));
             for (Map.Entry<Integer, Integer> e : shortcuts.entrySet()) { Point a = getNodeCenter(e.getKey()); Point b = getNodeCenter(e.getValue()); g2.drawLine(a.x, a.y, b.x, b.y); }
@@ -630,24 +671,54 @@ public class GameBoard extends JFrame {
         }
     }
 
-    // --- OTHER PANELS ---
     private class PlayerTurnPanel extends JPanel {
         private final JLabel lblTitle = new JLabel("PLAYER TURN");
         private final JLabel lblImage = new JLabel();
         private final JLabel lblInfo = new JLabel();
         private final Color maroonColor = new Color(128, 0, 0);
+
         public PlayerTurnPanel() {
-            setLayout(new GridBagLayout()); setBackground(new Color(220, 220, 220)); setBorder(new LineBorder(Color.GRAY, 1, true)); setMaximumSize(new Dimension(RIGHT_WIDTH, 100));
-            GridBagConstraints gbc = new GridBagConstraints(); gbc.insets = new Insets(5, 10, 5, 10);
-            lblTitle.setFont(POPS_BOLD.deriveFont(16f)); lblTitle.setForeground(Color.BLACK); gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2; gbc.anchor = GridBagConstraints.WEST; add(lblTitle, gbc);
-            lblImage.setPreferredSize(new Dimension(50, 50)); lblImage.setHorizontalAlignment(SwingConstants.CENTER); gbc.gridx = 0; gbc.gridy = 1; gbc.gridwidth = 1; gbc.anchor = GridBagConstraints.CENTER; add(lblImage, gbc);
-            lblInfo.setFont(POPS_REGULAR.deriveFont(14f)); lblInfo.setForeground(maroonColor); gbc.gridx = 1; gbc.gridy = 1; gbc.anchor = GridBagConstraints.WEST; gbc.weightx = 1.0; add(lblInfo, gbc);
+            setLayout(new GridBagLayout());
+            setBackground(new Color(220, 220, 220));
+            setBorder(new LineBorder(Color.GRAY, 1, true));
+            setMaximumSize(new Dimension(RIGHT_WIDTH, 100));
+
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.insets = new Insets(5, 10, 5, 10);
+
+            lblTitle.setFont(POPS_BOLD.deriveFont(16f));
+            lblTitle.setForeground(Color.BLACK);
+            gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+            gbc.anchor = GridBagConstraints.WEST;
+            add(lblTitle, gbc);
+
+            lblImage.setPreferredSize(new Dimension(50, 50));
+            lblImage.setHorizontalAlignment(SwingConstants.CENTER);
+            gbc.gridx = 0; gbc.gridy = 1; gbc.gridwidth = 1;
+            gbc.anchor = GridBagConstraints.CENTER;
+            add(lblImage, gbc);
+
+            lblInfo.setFont(POPS_REGULAR.deriveFont(14f));
+            lblInfo.setForeground(maroonColor);
+            gbc.gridx = 1; gbc.gridy = 1;
+            gbc.anchor = GridBagConstraints.WEST;
+            gbc.weightx = 1.0;
+            add(lblInfo, gbc);
         }
+
         public void updateTurn(int playerIndex, String playerName, int score) {
-            if (playerIndex >= 0 && playerIndex < playerImages.length && playerImages[playerIndex] != null) { ImageIcon icon = new ImageIcon(playerImages[playerIndex].getScaledInstance(50, 50, Image.SCALE_SMOOTH)); lblImage.setIcon(icon); } else { lblImage.setIcon(null); }
-            lblInfo.setText(playerName + " : (Score : " + score + ")"); revalidate(); repaint();
+            if (playerIndex >= 0 && playerIndex < playerImages.length && playerImages[playerIndex] != null) {
+                ImageIcon icon = new ImageIcon(playerImages[playerIndex].getScaledInstance(50, 50, Image.SCALE_SMOOTH));
+                lblImage.setIcon(icon);
+            } else {
+                lblImage.setIcon(null);
+            }
+            lblInfo.setText(playerName + " : (Score : " + score + ")");
+            revalidate();
+            repaint();
         }
     }
+
     private class DicePanel extends JPanel { int val = 1; boolean fwd = true; DicePanel() { setBackground(BG_BLUE_DARK); } void show(int v, boolean f) { val = v; fwd = f; repaint(); } @Override protected void paintComponent(Graphics g) { super.paintComponent(g); Graphics2D g2 = (Graphics2D) g; g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON); int sz = Math.min(getWidth(), getHeight()) - 40; int x = (getWidth() - sz) / 2; int y = 20; g2.setColor(fwd ? new Color(60, 180, 60) : new Color(200, 60, 60)); g2.fillRoundRect(x, y, sz, sz, 20, 20); g2.setColor(Color.WHITE); g2.fillRoundRect(x + 10, y + 10, sz - 20, sz - 20, 15, 15); g2.setColor(Color.BLACK); int pip = sz / 6; if (val % 2 != 0) fillPip(g2, x + sz / 2, y + sz / 2, pip); if (val > 1) { fillPip(g2, x + sz / 4, y + sz / 4, pip); fillPip(g2, x + 3 * sz / 4, y + 3 * sz / 4, pip); } if (val > 3) { fillPip(g2, x + 3 * sz / 4, y + sz / 4, pip); fillPip(g2, x + sz / 4, y + 3 * sz / 4, pip); } if (val == 6) { fillPip(g2, x + sz / 4, y + sz / 2, pip); fillPip(g2, x + 3 * sz / 4, y + sz / 2, pip); } } void fillPip(Graphics2D g, int x, int y, int s) { g.fillOval(x - s / 2, y - s / 2, s, s); } }
     private class StatsPanel extends JPanel { StatsPanel() { setBackground(BG_BLUE_DARK); } @Override protected void paintComponent(Graphics g) { super.paintComponent(g); g.setColor(Color.WHITE); g.setFont(POPS_BOLD.deriveFont(13f)); g.drawString("TOP WINS", 10, 20); g.drawString("TOP SCORES", 200, 20); g.drawLine(10, 25, 360, 25); g.setFont(POPS_REGULAR.deriveFont(12f)); int y = 45; List<Map.Entry<String, Integer>> wins = new ArrayList<>(WIN_SCORES.entrySet()); wins.sort((a, b) -> b.getValue() - a.getValue()); for (int i = 0; i < Math.min(3, wins.size()); i++) { g.drawString((i + 1) + ". " + wins.get(i).getKey() + " (" + wins.get(i).getValue() + ")", 10, y + i * 20); } List<Map.Entry<String, Integer>> coins = new ArrayList<>(CUMULATIVE_SCORES.entrySet()); coins.sort((a, b) -> b.getValue() - a.getValue()); for (int i = 0; i < Math.min(3, coins.size()); i++) { g.drawString((i + 1) + ". " + coins.get(i).getKey() + " (" + coins.get(i).getValue() + ")", 200, y + i * 20); } } }
 
