@@ -14,30 +14,22 @@ import javax.sound.sampled.*;
 
 public class GameBoard extends JFrame {
 
-    // ========================================================================================
-    // KONFIGURASI ALAMAT FILE (PATH)
-    // Path yang sudah ada saya pertahankan. Yang belum ada saya kosongkan ("").
-    // ========================================================================================
-
     // 1. FONT
     private static final String PATH_FONT = "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\FONT\\Clash Royale.ttf";
 
     // 2. BACKGROUND BOARD
-    // (Menggunakan path lama Anda. Jika salah, silakan ganti di sini)
+
     private static final String PATH_BG_IMG = "C:\\Users\\USER\\IdeaProjects\\ASD FINAL BOSS\\Background\\3d-fantasy-scene.jpg";
 
     // 3. AUDIO
     private static final String PATH_BGM = "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Backsound Game\\Orerbugh City (Backsound Game).wav";
     private static final String PATH_SFX_MOVE = "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Backsound Game\\move.wav";
-
-    // --> ISI PATH INI JIKA SUDAH ADA FILENYA <--
     private static final String PATH_SFX_COIN = "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Backsound Game\\Mario Coin Sound - Sound Effect (HD) - Gaming Sound FX.wav";
 
     // 4. GAMBAR KOIN
-    // --> ISI PATH INI JIKA SUDAH ADA FILENYA <--
     private static final String PATH_COIN_IMG = "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Player Character\\coinMario.png";
 
-    // 5. GAMBAR KARAKTER (Sesuai request sebelumnya)
+    // 5. GAMBAR KARAKTER
     private static final String[] CHAR_FILES = {
             "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Player Character\\mario.png",
             "C:\\Intellij Idea\\Final Project SEM 3\\FP ASD\\Player Character\\luigi.png",
@@ -46,8 +38,6 @@ public class GameBoard extends JFrame {
     };
 
     private static final String[] CHAR_NAMES = {"Mario", "Luigi", "Waluigi", "Yossi"};
-
-    // ========================================================================================
 
     // --- FONT LOADING ---
     private static Font POPS_BOLD;
