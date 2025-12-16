@@ -1,4 +1,6 @@
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -15,8 +17,13 @@ public class Gameplay extends JPanel implements ActionListener {
     private final int CELL_SIZE = 30;
     private final int COLS = 20;
     private final int ROWS = 20;
-    private final int WIDTH = COLS * CELL_SIZE;
-    private final int HEIGHT = ROWS * CELL_SIZE;
+    private final int MAZE_WIDTH = COLS * CELL_SIZE;  // 600px
+    private final int MAZE_HEIGHT = ROWS * CELL_SIZE; // 600px
+
+    // --- Konfigurasi LOG Area ---
+    private final int LOG_WIDTH = 250;
+    private final int TOTAL_WIDTH = MAZE_WIDTH + LOG_WIDTH + 40; // Extra padding
+    private final int TOTAL_HEIGHT = MAZE_HEIGHT + 100;
 
     // --- WARNA TEMA & WEIGHT ---
     private final Color BG_COLOR = new Color(0, 0, 30);
@@ -59,12 +66,14 @@ public class Gameplay extends JPanel implements ActionListener {
     private boolean isSolving = false;
     private String currentAlgo = "";
 
-    // VARIABEL UNTUK STATISTIK
+    // VARIABEL STATISTIK
     private double executionTimeMs = 0;
     private int pathTotalWeight = 0;
 
     // --- UI Control ---
-    private JButton btnNewMaze, btnClearPaths, btnBFS, btnDFS, btnDijkstra, btnAStar;
+    private JButton btnNewMaze, btnClearPaths, btnBFS, btnDFS, btnDijkstra, btnAStar, btnClearLog;
+    private JTextArea logArea; // LOG COMPONENT
+    private JScrollPane logScrollPane;
 
     // --- Images ---
     private BufferedImage pacmanImg;
@@ -75,12 +84,12 @@ public class Gameplay extends JPanel implements ActionListener {
     private String dotPath = "C:\\Users\\User\\Downloads\\dot.png";
 
     public Gameplay() {
-        this.setPreferredSize(new Dimension(WIDTH, HEIGHT + 100));
+        this.setPreferredSize(new Dimension(TOTAL_WIDTH, TOTAL_HEIGHT));
         this.setLayout(null);
         this.setBackground(BG_COLOR);
 
         loadImages();
-        initButtons();
+        initUIComponents();
         generateMaze();
     }
 
@@ -93,12 +102,31 @@ public class Gameplay extends JPanel implements ActionListener {
         }
     }
 
-    private void initButtons() {
-        int btnY = HEIGHT + 20;
-        int btnY2 = HEIGHT + 55;
+    private void initUIComponents() {
+        // --- 1. SETUP LOG AREA (Sebelah Kanan) ---
+        logArea = new JTextArea();
+        logArea.setEditable(false);
+        logArea.setBackground(new Color(10, 10, 20)); // Hampir hitam
+        logArea.setForeground(new Color(0, 255, 0)); // Text hijau terminal
+        logArea.setFont(new Font("Monospaced", Font.PLAIN, 11));
+        logArea.setMargin(new Insets(10, 10, 10, 10));
+
+        logScrollPane = new JScrollPane(logArea);
+        logScrollPane.setBounds(MAZE_WIDTH + 20, 10, LOG_WIDTH, MAZE_HEIGHT);
+        logScrollPane.setBorder(new LineBorder(WALL_COLOR_OUTER));
+
+        // Header Log Awal
+        logArea.append("=== SYSTEM READY ===\n");
+        logArea.append("Waiting for inputs...\n\n");
+
+        this.add(logScrollPane);
+
+        // --- 2. SETUP TOMBOL (Di Bawah Maze) ---
+        int btnY = MAZE_HEIGHT + 20;
+        int btnY2 = MAZE_HEIGHT + 55;
         Color btnBg = new Color(50, 50, 50);
 
-        // --- ROW 1 ---
+        // Row 1
         btnNewMaze = createStyledButton("New Maze", 10, btnY, 100, new Color(200, 50, 50), Color.WHITE);
         btnNewMaze.addActionListener(e -> generateMaze());
 
@@ -111,12 +139,19 @@ public class Gameplay extends JPanel implements ActionListener {
         btnDFS = createStyledButton("DFS", 320, btnY, 80, btnBg, Color.PINK);
         btnDFS.addActionListener(e -> startSolving("DFS"));
 
-        // --- ROW 2 ---
+        // Row 2
         btnDijkstra = createStyledButton("Dijkstra", 230, btnY2, 80, btnBg, Color.GREEN);
         btnDijkstra.addActionListener(e -> startSolving("Dijkstra"));
 
         btnAStar = createStyledButton("A* Star", 320, btnY2, 80, btnBg, Color.ORANGE);
         btnAStar.addActionListener(e -> startSolving("AStar"));
+
+        // Tombol Clear Log (Kecil di bawah log)
+        btnClearLog = createStyledButton("Clear Log", MAZE_WIDTH + 20, MAZE_HEIGHT + 10, LOG_WIDTH, Color.DARK_GRAY, Color.WHITE);
+        btnClearLog.addActionListener(e -> {
+            logArea.setText("");
+            logArea.append("=== LOG CLEARED ===\n\n");
+        });
 
         this.add(btnNewMaze);
         this.add(btnClearPaths);
@@ -124,6 +159,7 @@ public class Gameplay extends JPanel implements ActionListener {
         this.add(btnDFS);
         this.add(btnDijkstra);
         this.add(btnAStar);
+        this.add(btnClearLog);
     }
 
     private JButton createStyledButton(String text, int x, int y, int w, Color bg, Color fg) {
@@ -142,6 +178,10 @@ public class Gameplay extends JPanel implements ActionListener {
     private void generateMaze() {
         if (timer != null) timer.stop();
         clearPaths();
+
+        // Log System
+        logArea.append("--------------------------\n");
+        logArea.append("Generating New Maze...\n");
 
         grid = new Cell[COLS][ROWS];
         for (int x = 0; x < COLS; x++) {
@@ -187,6 +227,8 @@ public class Gameplay extends JPanel implements ActionListener {
         resetCellsForSolving();
         startCell = grid[0][0];
         endCell = grid[COLS - 1][ROWS - 1];
+
+        logArea.append("Maze Generated!\nWeights Randomized.\n\n");
         repaint();
     }
 
@@ -246,9 +288,9 @@ public class Gameplay extends JPanel implements ActionListener {
         currentAnimatingPath = new ArrayList<>();
         animationIndex = 0;
         currentAlgo = algo;
-        pathTotalWeight = 0; // Reset weight
+        pathTotalWeight = 0;
 
-        // MENCATAT WAKTU (START)
+        // TIMING START
         long startTime = System.nanoTime();
 
         switch (algo) {
@@ -258,14 +300,15 @@ public class Gameplay extends JPanel implements ActionListener {
             case "AStar": solveAStar(); break;
         }
 
-        // MENCATAT WAKTU (END)
+        // TIMING END
         long endTime = System.nanoTime();
-        // Konversi Nanodetik ke Milidetik
         executionTimeMs = (endTime - startTime) / 1_000_000.0;
 
         isSolving = true;
         timer = new Timer(15, this);
         timer.start();
+
+        logArea.append("> Running " + algo + "...\n");
     }
 
     private void solveBFS() {
@@ -367,13 +410,9 @@ public class Gameplay extends JPanel implements ActionListener {
         Cell curr = endCell;
         while (curr != null) {
             currentAnimatingPath.add(curr);
-
-            // Hitung Total Weight
-            // Kita tidak menghitung weight startCell karena kita mulai dari situ
             if (curr != startCell) {
                 pathTotalWeight += curr.weight;
             }
-
             curr = curr.parent;
         }
         if(currentAnimatingPath.size() > 0) currentAnimatingPath.remove(currentAnimatingPath.size()-1);
@@ -399,7 +438,7 @@ public class Gameplay extends JPanel implements ActionListener {
     }
 
     // ==========================================
-    // 3. VISUALIZATION & STATISTICS
+    // 3. VISUALIZATION & LOGGING
     // ==========================================
     @Override
     public void actionPerformed(ActionEvent e) {
@@ -422,24 +461,27 @@ public class Gameplay extends JPanel implements ActionListener {
             pathHistory.add(new PathLayer(new ArrayList<>(currentAnimatingPath), pathColor, currentAlgo));
             repaint();
 
-            // --- TAMPILKAN POPUP HASIL ---
-            showResultDialog();
+            // --- CATAT KE LOG ---
+            logResult();
         }
     }
 
-    private void showResultDialog() {
-        StringBuilder msg = new StringBuilder();
-        msg.append("Algorithm: ").append(currentAlgo).append("\n");
-        msg.append("Search Time: ").append(String.format("%.4f", executionTimeMs)).append(" ms\n");
+    private void logResult() {
+        // Format Teks agar rapi
+        String timeStr = String.format("%.3f ms", executionTimeMs);
 
-        // Tampilkan Weight hanya untuk Dijkstra dan A*
+        logArea.append("Done: " + currentAlgo + "\n");
+        logArea.append(" Time : " + timeStr + "\n");
+
         if (currentAlgo.equals("Dijkstra") || currentAlgo.equals("AStar")) {
-            msg.append("Total Path Cost (Weight): ").append(pathTotalWeight);
+            logArea.append(" Cost : " + pathTotalWeight + "\n");
         } else {
-            msg.append("Steps Taken: ").append(currentAnimatingPath.size());
+            logArea.append(" Steps: " + currentAnimatingPath.size() + "\n");
         }
+        logArea.append("----------------\n");
 
-        JOptionPane.showMessageDialog(this, msg.toString(), "Algorithm Result", JOptionPane.INFORMATION_MESSAGE);
+        // Auto scroll ke bawah
+        logArea.setCaretPosition(logArea.getDocument().getLength());
     }
 
     @Override
@@ -481,7 +523,7 @@ public class Gameplay extends JPanel implements ActionListener {
             }
         }
 
-        // 4. START (PACMAN) & END
+        // 4. START & END
         int startX = startCell.col * CELL_SIZE;
         int startY = startCell.row * CELL_SIZE;
         if (pacmanImg != null) {
