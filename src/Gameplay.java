@@ -1,5 +1,4 @@
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -20,20 +19,25 @@ public class Gameplay extends JPanel implements ActionListener {
     private final int MAZE_WIDTH = COLS * CELL_SIZE;  // 600px
     private final int MAZE_HEIGHT = ROWS * CELL_SIZE; // 600px
 
-    // --- Konfigurasi LOG Area ---
+    // --- Konfigurasi LOG Area & Legend ---
     private final int LOG_WIDTH = 250;
-    private final int TOTAL_WIDTH = MAZE_WIDTH + LOG_WIDTH + 40; // Extra padding
+    private final int TOTAL_WIDTH = MAZE_WIDTH + LOG_WIDTH + 40;
     private final int TOTAL_HEIGHT = MAZE_HEIGHT + 100;
 
-    // --- WARNA TEMA & WEIGHT ---
+    // --- WARNA TEMA ---
     private final Color BG_COLOR = new Color(0, 0, 30);
     private final Color WALL_COLOR_OUTER = new Color(25, 25, 165);
     private final Color WALL_COLOR_INNER = new Color(100, 100, 255);
 
-    // Warna Node (Weight) Gelap
-    private final Color COLOR_WEIGHT_1 = new Color(19, 32, 59); // Dark Blue
-    private final Color COLOR_WEIGHT_5 = new Color(50, 50, 60); // Dark Grey
-    private final Color COLOR_WEIGHT_10 = new Color(45, 20, 45); // Dark Purple
+    // --- WARNA NODE MAZE (TETAP GELAP) ---
+    private final Color MAP_COLOR_1 = new Color(19, 32, 59);  // Dark Blue
+    private final Color MAP_COLOR_5 = new Color(50, 50, 60);  // Dark Grey
+    private final Color MAP_COLOR_10 = new Color(45, 20, 45); // Dark Purple
+
+    // --- WARNA LEGENDA (TERANG) ---
+    private final Color LEGEND_COLOR_1 = new Color(100, 180, 255); // Soft Blue
+    private final Color LEGEND_COLOR_5 = new Color(255, 245, 80);  // Soft Yellow
+    private final Color LEGEND_COLOR_10 = new Color(255, 80, 150); // Soft Red/Pink
 
     // --- Struktur Data ---
     private Cell[][] grid;
@@ -72,14 +76,13 @@ public class Gameplay extends JPanel implements ActionListener {
 
     // --- UI Control ---
     private JButton btnNewMaze, btnClearPaths, btnBFS, btnDFS, btnDijkstra, btnAStar, btnClearLog;
-    private JTextArea logArea; // LOG COMPONENT
+    private JTextArea logArea;
     private JScrollPane logScrollPane;
 
     // --- Images ---
     private BufferedImage pacmanImg;
     private BufferedImage dotImg;
 
-    // GANTI PATH INI SESUAI KOMPUTER ANDA
     private String pacmanPath = "C:\\Users\\User\\Downloads\\pacman.png";
     private String dotPath = "C:\\Users\\User\\Downloads\\dot.png";
 
@@ -103,35 +106,39 @@ public class Gameplay extends JPanel implements ActionListener {
     }
 
     private void initUIComponents() {
-        // --- 1. SETUP LOG AREA (Sebelah Kanan) ---
+        // --- 1. SETUP LOG AREA ---
+        int logY = 130;
+        int logHeight = MAZE_HEIGHT - logY + 10;
+
         logArea = new JTextArea();
         logArea.setEditable(false);
-        logArea.setBackground(new Color(10, 10, 20)); // Hampir hitam
-        logArea.setForeground(new Color(0, 255, 0)); // Text hijau terminal
+        logArea.setBackground(new Color(10, 10, 20));
+        logArea.setForeground(new Color(0, 255, 0));
         logArea.setFont(new Font("Monospaced", Font.PLAIN, 11));
         logArea.setMargin(new Insets(10, 10, 10, 10));
 
         logScrollPane = new JScrollPane(logArea);
-        logScrollPane.setBounds(MAZE_WIDTH + 20, 10, LOG_WIDTH, MAZE_HEIGHT);
+        logScrollPane.setBounds(MAZE_WIDTH + 20, logY, LOG_WIDTH, logHeight);
         logScrollPane.setBorder(new LineBorder(WALL_COLOR_OUTER));
 
-        // Header Log Awal
         logArea.append("=== SYSTEM READY ===\n");
-        logArea.append("Waiting for inputs...\n\n");
+        logArea.append("Select Algorithm below...\n\n");
 
         this.add(logScrollPane);
 
-        // --- 2. SETUP TOMBOL (Di Bawah Maze) ---
+        // --- 2. SETUP TOMBOL (SEBARIS HORIZONTAL) ---
         int btnY = MAZE_HEIGHT + 20;
-        int btnY2 = MAZE_HEIGHT + 55;
         Color btnBg = new Color(50, 50, 50);
 
-        // Row 1
+        // Tombol Kontrol (Kiri)
         btnNewMaze = createStyledButton("New Maze", 10, btnY, 100, new Color(200, 50, 50), Color.WHITE);
         btnNewMaze.addActionListener(e -> generateMaze());
 
         btnClearPaths = createStyledButton("Clear Paths", 120, btnY, 100, new Color(200, 150, 0), Color.BLACK);
         btnClearPaths.addActionListener(e -> clearPaths());
+
+        // Tombol Algoritma (Berjejer ke kanan)
+        // x dimulai dari 230, lebar 80, jarak antar tombol 10
 
         btnBFS = createStyledButton("BFS", 230, btnY, 80, btnBg, Color.CYAN);
         btnBFS.addActionListener(e -> startSolving("BFS"));
@@ -139,15 +146,14 @@ public class Gameplay extends JPanel implements ActionListener {
         btnDFS = createStyledButton("DFS", 320, btnY, 80, btnBg, Color.PINK);
         btnDFS.addActionListener(e -> startSolving("DFS"));
 
-        // Row 2
-        btnDijkstra = createStyledButton("Dijkstra", 230, btnY2, 80, btnBg, Color.GREEN);
+        btnDijkstra = createStyledButton("Dijkstra", 410, btnY, 80, btnBg, Color.GREEN);
         btnDijkstra.addActionListener(e -> startSolving("Dijkstra"));
 
-        btnAStar = createStyledButton("A* Star", 320, btnY2, 80, btnBg, Color.ORANGE);
+        btnAStar = createStyledButton("A* Star", 500, btnY, 80, btnBg, Color.ORANGE);
         btnAStar.addActionListener(e -> startSolving("AStar"));
 
-        // Tombol Clear Log (Kecil di bawah log)
-        btnClearLog = createStyledButton("Clear Log", MAZE_WIDTH + 20, MAZE_HEIGHT + 10, LOG_WIDTH, Color.DARK_GRAY, Color.WHITE);
+        // Tombol Clear Log (Di kanan bawah Log)
+        btnClearLog = createStyledButton("Clear Log", MAZE_WIDTH + 20, MAZE_HEIGHT + 20, LOG_WIDTH, Color.DARK_GRAY, Color.WHITE);
         btnClearLog.addActionListener(e -> {
             logArea.setText("");
             logArea.append("=== LOG CLEARED ===\n\n");
@@ -179,7 +185,6 @@ public class Gameplay extends JPanel implements ActionListener {
         if (timer != null) timer.stop();
         clearPaths();
 
-        // Log System
         logArea.append("--------------------------\n");
         logArea.append("Generating New Maze...\n");
 
@@ -190,7 +195,7 @@ public class Gameplay extends JPanel implements ActionListener {
             }
         }
 
-        // Prim's Algorithm
+        // Prim's
         ArrayList<Cell> frontier = new ArrayList<>();
         Random rand = new Random();
         Cell start = grid[0][0];
@@ -211,7 +216,7 @@ public class Gameplay extends JPanel implements ActionListener {
             addFrontier(current, frontier);
         }
 
-        // Braid Maze
+        // Braid
         int extraPaths = 50;
         for (int i = 0; i < extraPaths; i++) {
             int cx = rand.nextInt(COLS);
@@ -290,7 +295,6 @@ public class Gameplay extends JPanel implements ActionListener {
         currentAlgo = algo;
         pathTotalWeight = 0;
 
-        // TIMING START
         long startTime = System.nanoTime();
 
         switch (algo) {
@@ -300,7 +304,6 @@ public class Gameplay extends JPanel implements ActionListener {
             case "AStar": solveAStar(); break;
         }
 
-        // TIMING END
         long endTime = System.nanoTime();
         executionTimeMs = (endTime - startTime) / 1_000_000.0;
 
@@ -461,13 +464,11 @@ public class Gameplay extends JPanel implements ActionListener {
             pathHistory.add(new PathLayer(new ArrayList<>(currentAnimatingPath), pathColor, currentAlgo));
             repaint();
 
-            // --- CATAT KE LOG ---
             logResult();
         }
     }
 
     private void logResult() {
-        // Format Teks agar rapi
         String timeStr = String.format("%.3f ms", executionTimeMs);
 
         logArea.append("Done: " + currentAlgo + "\n");
@@ -479,8 +480,6 @@ public class Gameplay extends JPanel implements ActionListener {
             logArea.append(" Steps: " + currentAnimatingPath.size() + "\n");
         }
         logArea.append("----------------\n");
-
-        // Auto scroll ke bawah
         logArea.setCaretPosition(logArea.getDocument().getLength());
     }
 
@@ -490,10 +489,10 @@ public class Gameplay extends JPanel implements ActionListener {
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // 1. GRID & NODE WEIGHT COLORING
+        // 1. GRID & NODE WEIGHT COLORING (PAKAI WARNA GELAP)
         for (int x = 0; x < COLS; x++) {
             for (int y = 0; y < ROWS; y++) {
-                g2.setColor(grid[x][y].nodeColor);
+                g2.setColor(grid[x][y].nodeColor); // Ini pakai MAP_COLOR (Gelap)
                 g2.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
             }
         }
@@ -545,6 +544,43 @@ public class Gameplay extends JPanel implements ActionListener {
                 grid[x][y].drawWalls(g2, CELL_SIZE);
             }
         }
+
+        // --- 6. LEGEND (KETERANGAN WEIGHT - WARNA BARU) ---
+        drawLegend(g2);
+    }
+
+    private void drawLegend(Graphics2D g2) {
+        int lx = MAZE_WIDTH + 20;
+        int ly = 10;
+
+        g2.setColor(Color.WHITE);
+        g2.setFont(new Font("Arial", Font.BOLD, 12));
+        g2.drawString("Node Weight Legend:", lx, ly + 12);
+
+        // Item 1 (Weight 1 - Soft Blue)
+        g2.setColor(LEGEND_COLOR_1); // Pakai warna terang
+        g2.fillRect(lx, ly + 25, 20, 20);
+        g2.setColor(Color.WHITE);
+        g2.drawRect(lx, ly + 25, 20, 20);
+        g2.setColor(Color.LIGHT_GRAY);
+        g2.setFont(new Font("Arial", Font.PLAIN, 11));
+        g2.drawString("Blue Tile (Weight: 1)", lx + 30, ly + 40);
+
+        // Item 2 (Weight 5 - Soft Yellow)
+        g2.setColor(LEGEND_COLOR_5); // Pakai warna terang
+        g2.fillRect(lx, ly + 55, 20, 20);
+        g2.setColor(Color.WHITE);
+        g2.drawRect(lx, ly + 55, 20, 20);
+        g2.setColor(Color.LIGHT_GRAY);
+        g2.drawString("Yellow Tile (Weight: 5)", lx + 30, ly + 70);
+
+        // Item 3 (Weight 10 - Soft Red)
+        g2.setColor(LEGEND_COLOR_10); // Pakai warna terang
+        g2.fillRect(lx, ly + 85, 20, 20);
+        g2.setColor(Color.WHITE);
+        g2.drawRect(lx, ly + 85, 20, 20);
+        g2.setColor(Color.LIGHT_GRAY);
+        g2.drawString("Red Tile (Weight: 10)", lx + 30, ly + 100);
     }
 
     // === INNER CLASS CELL ===
@@ -568,15 +604,16 @@ public class Gameplay extends JPanel implements ActionListener {
 
         private void assignRandomWeight() {
             double r = Math.random();
+            // Assign warna GELAP untuk PETA
             if (r < 0.33) {
                 this.weight = 1;
-                this.nodeColor = COLOR_WEIGHT_1;
+                this.nodeColor = MAP_COLOR_1;
             } else if (r < 0.66) {
                 this.weight = 5;
-                this.nodeColor = COLOR_WEIGHT_5;
+                this.nodeColor = MAP_COLOR_5;
             } else {
                 this.weight = 10;
-                this.nodeColor = COLOR_WEIGHT_10;
+                this.nodeColor = MAP_COLOR_10;
             }
         }
 

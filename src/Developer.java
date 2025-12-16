@@ -5,7 +5,7 @@ public class Developer {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            JFrame frame = new JFrame("Maze Generator & Solver (Prim's + BFS/DFS)");
+            JFrame frame = new JFrame("Maze Generator & Solver");
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setResizable(false);
 
