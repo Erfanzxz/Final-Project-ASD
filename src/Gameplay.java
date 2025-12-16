@@ -18,10 +18,15 @@ public class Gameplay extends JPanel implements ActionListener {
     private final int WIDTH = COLS * CELL_SIZE;
     private final int HEIGHT = ROWS * CELL_SIZE;
 
-    // --- WARNA TEMA ---
+    // --- WARNA TEMA & WEIGHT (GELAP) ---
     private final Color BG_COLOR = new Color(0, 0, 30);
     private final Color WALL_COLOR_OUTER = new Color(25, 25, 165);
     private final Color WALL_COLOR_INNER = new Color(100, 100, 255);
+
+    // Warna Node (Weight) Gelap sesuai permintaan
+    private final Color COLOR_WEIGHT_1 = new Color(19, 32, 59); // Dark Blue
+    private final Color COLOR_WEIGHT_5 = new Color(50, 50, 60); // Dark Grey (Sedikit diterangkan agar beda)
+    private final Color COLOR_WEIGHT_10 = new Color(45, 20, 45); // Dark Purple
 
     // --- Struktur Data ---
     private Cell[][] grid;
@@ -31,8 +36,7 @@ public class Gameplay extends JPanel implements ActionListener {
     private Stack<Cell> stack;
     private Queue<Cell> queue;
 
-    // BAGIAN BARU: MENYIMPAN RIWAYAT PATH (HISTORY)
-    // Kita buat class kecil untuk menyimpan data tiap path
+    // Class untuk menyimpan data tiap path (History)
     private class PathLayer {
         ArrayList<Cell> cells;
         Color color;
@@ -45,9 +49,9 @@ public class Gameplay extends JPanel implements ActionListener {
         }
     }
 
-    private ArrayList<PathLayer> pathHistory = new ArrayList<>(); // List menampung banyak path
-    private ArrayList<Cell> currentAnimatingPath; // Path yang sedang di-animasikan
-    private ArrayList<Cell> visitedOrder; // Urutan scanning
+    private ArrayList<PathLayer> pathHistory = new ArrayList<>();
+    private ArrayList<Cell> currentAnimatingPath;
+    private ArrayList<Cell> visitedOrder;
 
     private Timer timer;
     private int animationIndex = 0;
@@ -71,7 +75,7 @@ public class Gameplay extends JPanel implements ActionListener {
 
         loadImages();
         initButtons();
-        generateMaze(); // Generate awal
+        generateMaze();
     }
 
     private void loadImages() {
@@ -88,15 +92,13 @@ public class Gameplay extends JPanel implements ActionListener {
         Color btnBg = new Color(50, 50, 50);
         Color btnFg = Color.WHITE;
 
-        // Tombol 1: Ganti Map Total
         btnNewMaze = createStyledButton("New Maze", 10, btnY, 100, new Color(200, 50, 50), Color.WHITE);
         btnNewMaze.addActionListener(e -> generateMaze());
 
-        // Tombol 2: Hapus Jalur (Reset Logic)
         btnClearPaths = createStyledButton("Clear Paths", 120, btnY, 100, new Color(200, 150, 0), Color.BLACK);
         btnClearPaths.addActionListener(e -> clearPaths());
 
-        // Tombol 3 & 4: Algoritma
+        // Algoritma
         btnBFS = createStyledButton("BFS (Cyan)", 230, btnY, 100, btnBg, Color.CYAN);
         btnBFS.addActionListener(e -> startSolving("BFS"));
 
@@ -120,11 +122,11 @@ public class Gameplay extends JPanel implements ActionListener {
     }
 
     // ==========================================
-    // 1. GENERATE MAZE (Hanya dilakukan saat tombol New Maze ditekan)
+    // 1. GENERATE MAZE
     // ==========================================
     private void generateMaze() {
         if (timer != null) timer.stop();
-        clearPaths(); // Hapus history lama
+        clearPaths();
 
         grid = new Cell[COLS][ROWS];
         for (int x = 0; x < COLS; x++) {
@@ -154,7 +156,7 @@ public class Gameplay extends JPanel implements ActionListener {
             addFrontier(current, frontier);
         }
 
-        // --- MULTIPLE PATHS (BRAID MAZE) ---
+        // Braid Maze (Multiple Paths)
         int extraPaths = 50;
         for (int i = 0; i < extraPaths; i++) {
             int cx = rand.nextInt(COLS);
@@ -167,13 +169,12 @@ public class Gameplay extends JPanel implements ActionListener {
             else if (direction == 3 && cx > 0) removeWalls(current, grid[cx-1][cy]);
         }
 
-        resetCellsForSolving(); // Bersihkan flag visited sisa generate
+        resetCellsForSolving();
         startCell = grid[0][0];
         endCell = grid[COLS - 1][ROWS - 1];
         repaint();
     }
 
-    // Fungsi untuk menghapus jejak tanpa ganti map
     private void clearPaths() {
         if (timer != null) timer.stop();
         isSolving = false;
@@ -184,8 +185,8 @@ public class Gameplay extends JPanel implements ActionListener {
         repaint();
     }
 
-    // Helper: Reset status visited & parent di Grid agar siap solving baru
     private void resetCellsForSolving() {
+        if (grid == null) return;
         for (int x = 0; x < COLS; x++) {
             for (int y = 0; y < ROWS; y++) {
                 grid[x][y].visited = false;
@@ -194,7 +195,6 @@ public class Gameplay extends JPanel implements ActionListener {
         }
     }
 
-    // ... (Fungsi addFrontier & removeWalls SAMA SEPERTI SEBELUMNYA) ...
     private void addFrontier(Cell cell, ArrayList<Cell> frontier) {
         int[] dx = {0, 0, 1, -1};
         int[] dy = {-1, 1, 0, 0};
@@ -220,14 +220,11 @@ public class Gameplay extends JPanel implements ActionListener {
     }
 
     // ==========================================
-    // 2. SOLVING LOGIC (DIUPDATE UNTUK MULTI-PATH)
+    // 2. SOLVING LOGIC
     // ==========================================
     private void startSolving(String algo) {
         if (isSolving) return;
-
-        // PENTING: Kita reset visited grid, TAPI JANGAN clear pathHistory
         resetCellsForSolving();
-
         visitedOrder = new ArrayList<>();
         currentAnimatingPath = new ArrayList<>();
         animationIndex = 0;
@@ -236,7 +233,7 @@ public class Gameplay extends JPanel implements ActionListener {
         if (algo.equals("BFS")) solveBFS(); else solveDFS();
 
         isSolving = true;
-        timer = new Timer(10, this);
+        timer = new Timer(10, this); // Kecepatan animasi
         timer.start();
     }
 
@@ -282,8 +279,8 @@ public class Gameplay extends JPanel implements ActionListener {
             currentAnimatingPath.add(curr);
             curr = curr.parent;
         }
-        if(currentAnimatingPath.size() > 0) currentAnimatingPath.remove(currentAnimatingPath.size()-1); // remove start
-        Collections.reverse(currentAnimatingPath); // Biar urut dari start ke end
+        if(currentAnimatingPath.size() > 0) currentAnimatingPath.remove(currentAnimatingPath.size()-1);
+        Collections.reverse(currentAnimatingPath);
     }
 
     private ArrayList<Cell> getConnectedNeighbors(Cell c) {
@@ -295,7 +292,6 @@ public class Gameplay extends JPanel implements ActionListener {
         return list;
     }
 
-    // Helper neighbors for generation
     private ArrayList<Cell> getNeighbors(Cell c) {
         ArrayList<Cell> list = new ArrayList<>();
         if (c.row > 0) list.add(grid[c.col][c.row - 1]);
@@ -306,7 +302,7 @@ public class Gameplay extends JPanel implements ActionListener {
     }
 
     // ==========================================
-    // 3. VISUALIZATION (MULTI LAYER)
+    // 3. VISUALIZATION
     // ==========================================
     @Override
     public void actionPerformed(ActionEvent e) {
@@ -314,16 +310,12 @@ public class Gameplay extends JPanel implements ActionListener {
             animationIndex++;
             repaint();
         } else {
-            // Selesai Scanning, Simpan Path ke History
             timer.stop();
             isSolving = false;
-
-            // Tentukan warna berdasarkan algoritma
-            Color pathColor = currentAlgo.equals("BFS") ? Color.CYAN : Color.PINK;
-
-            // Tambahkan ke layer history agar permanen (sampai di clear)
+            // UPDATE WARNA PATH AKHIR
+            // Karena background gelap, gunakan warna Cyan terang untuk BFS (jangan biru tua)
+            Color pathColor = currentAlgo.equals("BFS") ? Color.CYAN : new Color(255, 105, 180); // Hot Pink
             pathHistory.add(new PathLayer(new ArrayList<>(currentAnimatingPath), pathColor, currentAlgo));
-
             repaint();
         }
     }
@@ -333,60 +325,63 @@ public class Gameplay extends JPanel implements ActionListener {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-        // 1. GRID & NODE NUMBER
+        // 1. GRID & NODE WEIGHT COLORING
         for (int x = 0; x < COLS; x++) {
             for (int y = 0; y < ROWS; y++) {
-                g2.setColor(BG_COLOR.brighter());
+                g2.setColor(grid[x][y].nodeColor);
                 g2.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
-
-                int nodeNumber = (y * COLS) + x;
-                g2.setFont(new Font("Arial", Font.PLAIN, 9));
-                g2.setColor(new Color(255, 255, 255, 60));
-                g2.drawString(String.valueOf(nodeNumber), x * CELL_SIZE + 2, y * CELL_SIZE + 10);
             }
         }
 
-        // 2. GAMBAR PATH HISTORY (Jejak Logic Sebelumnya)
-        // Kita gambar pakai transparansi agar kalau tumpang tindih kelihatan warnanya nyampur
+        // 2. PATH HISTORY (Jejak yang sudah selesai)
         for (PathLayer layer : pathHistory) {
-            // Set warna semi-transparan
             Color c = layer.color;
-            g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 150));
-
+            // Gunakan warna solid atau semi-transparan yang kuat
+            g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 200));
             for (Cell cell : layer.cells) {
-                // Gambar Kotak/Blok Warna
-                g2.fillRect(cell.col * CELL_SIZE + 4, cell.row * CELL_SIZE + 4, CELL_SIZE - 8, CELL_SIZE - 8);
-
-                // Opsional: Gambar Dot kecil di tengah
+                // Gambar jalur sedikit lebih kecil dari kotak
+                g2.fillRect(cell.col * CELL_SIZE + 10, cell.row * CELL_SIZE + 10, CELL_SIZE - 20, CELL_SIZE - 20);
+                // Tambahkan outline agar lebih jelas
                 g2.setColor(Color.WHITE);
-                g2.fillOval(cell.col * CELL_SIZE + CELL_SIZE/2 - 2, cell.row * CELL_SIZE + CELL_SIZE/2 - 2, 4, 4);
-                g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 150)); // Balikin warna
+                g2.drawRect(cell.col * CELL_SIZE + 10, cell.row * CELL_SIZE + 10, CELL_SIZE - 20, CELL_SIZE - 20);
+                g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 200)); // Balikin warna
             }
         }
 
-        // 3. ANIMASI SCANNING (Sedang berjalan)
+        // 3. ANIMASI SCANNING (Proses Pencarian)
         if (isSolving) {
-            g2.setColor(currentAlgo.equals("BFS") ? new Color(0, 255, 255, 50) : new Color(255, 100, 100, 50));
+            // PERUBAHAN: Gunakan warna terang transparan (Neon) agar terlihat di background gelap
+            if (currentAlgo.equals("BFS")) {
+                g2.setColor(new Color(0, 255, 255, 120)); // Neon Cyan Transparan
+            } else {
+                g2.setColor(new Color(255, 105, 180, 120)); // Neon Pink Transparan
+            }
+
             for (int i = 0; i < animationIndex && i < visitedOrder.size(); i++) {
                 Cell c = visitedOrder.get(i);
+                // Mengisi full kotak agar efek "scanning" terasa
                 g2.fillRect(c.col * CELL_SIZE, c.row * CELL_SIZE, CELL_SIZE, CELL_SIZE);
             }
         }
 
-        // 4. GAMBAR START (PACMAN) & END
+        // 4. START (PACMAN) & END
         int startX = startCell.col * CELL_SIZE;
         int startY = startCell.row * CELL_SIZE;
         if (pacmanImg != null) {
+            // Gambar Pacman
             g2.drawImage(pacmanImg, startX + 2, startY + 2, CELL_SIZE - 4, CELL_SIZE - 4, null);
         } else {
             g2.setColor(Color.YELLOW);
             g2.fillArc(startX+2, startY+2, CELL_SIZE-4, CELL_SIZE-4, 30, 300);
         }
 
+        // End Point (Merah Terang)
         g2.setColor(new Color(255, 50, 50));
         g2.fillRect(endCell.col * CELL_SIZE + 5, endCell.row * CELL_SIZE + 5, CELL_SIZE - 10, CELL_SIZE - 10);
+        g2.setColor(Color.WHITE);
+        g2.setStroke(new BasicStroke(2));
+        g2.drawRect(endCell.col * CELL_SIZE + 5, endCell.row * CELL_SIZE + 5, CELL_SIZE - 10, CELL_SIZE - 10);
 
         // 5. WALLS
         for (int x = 0; x < COLS; x++) {
@@ -396,32 +391,48 @@ public class Gameplay extends JPanel implements ActionListener {
         }
     }
 
+    // === INNER CLASS CELL ===
     private class Cell {
         int col, row;
         boolean[] walls = {true, true, true, true};
         boolean visited = false;
         Cell parent = null;
+        int weight;
+        Color nodeColor;
 
         public Cell(int col, int row) {
             this.col = col;
             this.row = row;
+            assignRandomWeight();
+        }
+
+        private void assignRandomWeight() {
+            double r = Math.random();
+            if (r < 0.33) {
+                this.weight = 1;
+                this.nodeColor = COLOR_WEIGHT_1;
+            } else if (r < 0.66) {
+                this.weight = 5;
+                this.nodeColor = COLOR_WEIGHT_5;
+            } else {
+                this.weight = 10;
+                this.nodeColor = COLOR_WEIGHT_10;
+            }
         }
 
         public void drawWalls(Graphics2D g2, int size) {
             int x = col * size;
             int y = row * size;
-            drawWallLines(g2, x, y, size, WALL_COLOR_OUTER, 8);
-            drawWallLines(g2, x, y, size, WALL_COLOR_INNER, 4);
+            drawWallLines(g2, x, y, size, WALL_COLOR_OUTER, 4);
         }
 
         private void drawWallLines(Graphics2D g2, int x, int y, int size, Color color, int thickness) {
             g2.setColor(color);
-            g2.setStroke(new BasicStroke(thickness, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER));
-            int offset = thickness / 2;
-            if (walls[0]) g2.drawLine(x - offset, y, x + size + offset, y);
-            if (walls[1]) g2.drawLine(x + size, y - offset, x + size, y + size + offset);
-            if (walls[2]) g2.drawLine(x + size + offset, y + size, x - offset, y + size);
-            if (walls[3]) g2.drawLine(x, y + size + offset, x, y - offset);
+            g2.setStroke(new BasicStroke(thickness));
+            if (walls[0]) g2.drawLine(x, y, x + size, y);
+            if (walls[1]) g2.drawLine(x + size, y, x + size, y + size);
+            if (walls[2]) g2.drawLine(x + size, y + size, x, y + size);
+            if (walls[3]) g2.drawLine(x, y + size, x, y);
         }
     }
 }
