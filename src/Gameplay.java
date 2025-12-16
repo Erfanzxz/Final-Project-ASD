@@ -18,7 +18,7 @@ public class Gameplay extends JPanel implements ActionListener {
     private final int WIDTH = COLS * CELL_SIZE;
     private final int HEIGHT = ROWS * CELL_SIZE;
 
-    // --- WARNA TEMA & WEIGHT (GELAP) ---
+    // --- WARNA TEMA & WEIGHT ---
     private final Color BG_COLOR = new Color(0, 0, 30);
     private final Color WALL_COLOR_OUTER = new Color(25, 25, 165);
     private final Color WALL_COLOR_INNER = new Color(100, 100, 255);
@@ -35,7 +35,7 @@ public class Gameplay extends JPanel implements ActionListener {
     // --- Variabel Logika ---
     private Stack<Cell> stack;
     private Queue<Cell> queue;
-    private PriorityQueue<Cell> priorityQueue; // Untuk Dijkstra & A*
+    private PriorityQueue<Cell> priorityQueue;
 
     // Class untuk menyimpan data tiap path (History)
     private class PathLayer {
@@ -59,6 +59,10 @@ public class Gameplay extends JPanel implements ActionListener {
     private boolean isSolving = false;
     private String currentAlgo = "";
 
+    // VARIABEL UNTUK STATISTIK
+    private double executionTimeMs = 0;
+    private int pathTotalWeight = 0;
+
     // --- UI Control ---
     private JButton btnNewMaze, btnClearPaths, btnBFS, btnDFS, btnDijkstra, btnAStar;
 
@@ -71,7 +75,7 @@ public class Gameplay extends JPanel implements ActionListener {
     private String dotPath = "C:\\Users\\User\\Downloads\\dot.png";
 
     public Gameplay() {
-        this.setPreferredSize(new Dimension(WIDTH, HEIGHT + 100)); // Tambah tinggi panel untuk tombol extra
+        this.setPreferredSize(new Dimension(WIDTH, HEIGHT + 100));
         this.setLayout(null);
         this.setBackground(BG_COLOR);
 
@@ -91,7 +95,7 @@ public class Gameplay extends JPanel implements ActionListener {
 
     private void initButtons() {
         int btnY = HEIGHT + 20;
-        int btnY2 = HEIGHT + 55; // Baris kedua tombol
+        int btnY2 = HEIGHT + 55;
         Color btnBg = new Color(50, 50, 50);
 
         // --- ROW 1 ---
@@ -107,12 +111,10 @@ public class Gameplay extends JPanel implements ActionListener {
         btnDFS = createStyledButton("DFS", 320, btnY, 80, btnBg, Color.PINK);
         btnDFS.addActionListener(e -> startSolving("DFS"));
 
-        // --- ROW 2 (NEW ALGORITHMS) ---
-        // Dijkstra (Warna Hijau Neon)
+        // --- ROW 2 ---
         btnDijkstra = createStyledButton("Dijkstra", 230, btnY2, 80, btnBg, Color.GREEN);
         btnDijkstra.addActionListener(e -> startSolving("Dijkstra"));
 
-        // A* (Warna Orange Neon)
         btnAStar = createStyledButton("A* Star", 320, btnY2, 80, btnBg, Color.ORANGE);
         btnAStar.addActionListener(e -> startSolving("AStar"));
 
@@ -204,7 +206,6 @@ public class Gameplay extends JPanel implements ActionListener {
             for (int y = 0; y < ROWS; y++) {
                 grid[x][y].visited = false;
                 grid[x][y].parent = null;
-                // Reset nilai Algoritma
                 grid[x][y].gCost = Integer.MAX_VALUE;
                 grid[x][y].fCost = Integer.MAX_VALUE;
             }
@@ -245,6 +246,10 @@ public class Gameplay extends JPanel implements ActionListener {
         currentAnimatingPath = new ArrayList<>();
         animationIndex = 0;
         currentAlgo = algo;
+        pathTotalWeight = 0; // Reset weight
+
+        // MENCATAT WAKTU (START)
+        long startTime = System.nanoTime();
 
         switch (algo) {
             case "BFS": solveBFS(); break;
@@ -252,6 +257,11 @@ public class Gameplay extends JPanel implements ActionListener {
             case "Dijkstra": solveDijkstra(); break;
             case "AStar": solveAStar(); break;
         }
+
+        // MENCATAT WAKTU (END)
+        long endTime = System.nanoTime();
+        // Konversi Nanodetik ke Milidetik
+        executionTimeMs = (endTime - startTime) / 1_000_000.0;
 
         isSolving = true;
         timer = new Timer(15, this);
@@ -294,18 +304,14 @@ public class Gameplay extends JPanel implements ActionListener {
         }
     }
 
-    // --- DIJKSTRA ALGORITHM ---
     private void solveDijkstra() {
-        // Priority Queue diurutkan berdasarkan gCost (jarak tempuh dari start)
         priorityQueue = new PriorityQueue<>(Comparator.comparingInt(c -> c.gCost));
-
         startCell.gCost = 0;
         priorityQueue.add(startCell);
 
         while (!priorityQueue.isEmpty()) {
             Cell current = priorityQueue.poll();
-
-            if (current.visited) continue; // Skip jika sudah diproses
+            if (current.visited) continue;
             current.visited = true;
             visitedOrder.add(current);
 
@@ -313,9 +319,7 @@ public class Gameplay extends JPanel implements ActionListener {
 
             for (Cell neighbor : getConnectedNeighbors(current)) {
                 if (!neighbor.visited) {
-                    // Logic Directed Weight: Biaya pindah ke node B adalah Weight B
                     int newCost = current.gCost + neighbor.weight;
-
                     if (newCost < neighbor.gCost) {
                         neighbor.gCost = newCost;
                         neighbor.parent = current;
@@ -326,19 +330,14 @@ public class Gameplay extends JPanel implements ActionListener {
         }
     }
 
-    // --- A* (A-STAR) ALGORITHM ---
     private void solveAStar() {
-        // Priority Queue diurutkan berdasarkan fCost (gCost + Heuristic)
         priorityQueue = new PriorityQueue<>(Comparator.comparingInt(c -> c.fCost));
-
         startCell.gCost = 0;
         startCell.fCost = heuristic(startCell, endCell);
         priorityQueue.add(startCell);
 
         while (!priorityQueue.isEmpty()) {
             Cell current = priorityQueue.poll();
-
-            // A* sedikit beda, kita tandai visited saat di-poll
             if (current.visited) continue;
             current.visited = true;
             visitedOrder.add(current);
@@ -348,15 +347,11 @@ public class Gameplay extends JPanel implements ActionListener {
             for (Cell neighbor : getConnectedNeighbors(current)) {
                 if (!neighbor.visited) {
                     int tentativeGCost = current.gCost + neighbor.weight;
-
                     if (tentativeGCost < neighbor.gCost) {
                         neighbor.parent = current;
                         neighbor.gCost = tentativeGCost;
                         neighbor.hCost = heuristic(neighbor, endCell);
                         neighbor.fCost = neighbor.gCost + neighbor.hCost;
-
-                        // Jika sudah ada di PQ tapi cost baru lebih kecil, Java PQ tidak otomatis update
-                        // Cara simpel: tambahkan lagi (node lama akan di-skip saat di-poll karena visited=true)
                         priorityQueue.add(neighbor);
                     }
                 }
@@ -364,9 +359,7 @@ public class Gameplay extends JPanel implements ActionListener {
         }
     }
 
-    // Fungsi Heuristik (Manhattan Distance untuk Grid)
     private int heuristic(Cell a, Cell b) {
-        // Kalikan dengan weight minimum (1) agar skalanya pas
         return Math.abs(a.col - b.col) + Math.abs(a.row - b.row);
     }
 
@@ -374,6 +367,13 @@ public class Gameplay extends JPanel implements ActionListener {
         Cell curr = endCell;
         while (curr != null) {
             currentAnimatingPath.add(curr);
+
+            // Hitung Total Weight
+            // Kita tidak menghitung weight startCell karena kita mulai dari situ
+            if (curr != startCell) {
+                pathTotalWeight += curr.weight;
+            }
+
             curr = curr.parent;
         }
         if(currentAnimatingPath.size() > 0) currentAnimatingPath.remove(currentAnimatingPath.size()-1);
@@ -399,7 +399,7 @@ public class Gameplay extends JPanel implements ActionListener {
     }
 
     // ==========================================
-    // 3. VISUALIZATION
+    // 3. VISUALIZATION & STATISTICS
     // ==========================================
     @Override
     public void actionPerformed(ActionEvent e) {
@@ -410,11 +410,10 @@ public class Gameplay extends JPanel implements ActionListener {
             timer.stop();
             isSolving = false;
 
-            // Tentukan Warna Path Akhir
             Color pathColor;
             switch(currentAlgo) {
                 case "BFS": pathColor = Color.CYAN; break;
-                case "DFS": pathColor = new Color(255, 105, 180); break; // Hot Pink
+                case "DFS": pathColor = new Color(255, 105, 180); break;
                 case "Dijkstra": pathColor = Color.GREEN; break;
                 case "AStar": pathColor = Color.ORANGE; break;
                 default: pathColor = Color.WHITE;
@@ -422,7 +421,25 @@ public class Gameplay extends JPanel implements ActionListener {
 
             pathHistory.add(new PathLayer(new ArrayList<>(currentAnimatingPath), pathColor, currentAlgo));
             repaint();
+
+            // --- TAMPILKAN POPUP HASIL ---
+            showResultDialog();
         }
+    }
+
+    private void showResultDialog() {
+        StringBuilder msg = new StringBuilder();
+        msg.append("Algorithm: ").append(currentAlgo).append("\n");
+        msg.append("Search Time: ").append(String.format("%.4f", executionTimeMs)).append(" ms\n");
+
+        // Tampilkan Weight hanya untuk Dijkstra dan A*
+        if (currentAlgo.equals("Dijkstra") || currentAlgo.equals("AStar")) {
+            msg.append("Total Path Cost (Weight): ").append(pathTotalWeight);
+        } else {
+            msg.append("Steps Taken: ").append(currentAnimatingPath.size());
+        }
+
+        JOptionPane.showMessageDialog(this, msg.toString(), "Algorithm Result", JOptionPane.INFORMATION_MESSAGE);
     }
 
     @Override
@@ -455,8 +472,8 @@ public class Gameplay extends JPanel implements ActionListener {
         if (isSolving) {
             if (currentAlgo.equals("BFS")) g2.setColor(new Color(0, 255, 255, 120));
             else if (currentAlgo.equals("DFS")) g2.setColor(new Color(255, 105, 180, 120));
-            else if (currentAlgo.equals("Dijkstra")) g2.setColor(new Color(0, 255, 0, 120)); // Hijau Neon
-            else if (currentAlgo.equals("AStar")) g2.setColor(new Color(255, 165, 0, 120)); // Oranye Neon
+            else if (currentAlgo.equals("Dijkstra")) g2.setColor(new Color(0, 255, 0, 120));
+            else if (currentAlgo.equals("AStar")) g2.setColor(new Color(255, 165, 0, 120));
 
             for (int i = 0; i < animationIndex && i < visitedOrder.size(); i++) {
                 Cell c = visitedOrder.get(i);
@@ -497,10 +514,9 @@ public class Gameplay extends JPanel implements ActionListener {
         int weight;
         Color nodeColor;
 
-        // Variabel untuk Dijkstra dan A*
-        int gCost = Integer.MAX_VALUE; // Biaya dari start ke node ini
-        int hCost = 0; // Biaya heuristik (perkiraan) ke end
-        int fCost = Integer.MAX_VALUE; // Total cost (g + h)
+        int gCost = Integer.MAX_VALUE;
+        int hCost = 0;
+        int fCost = Integer.MAX_VALUE;
 
         public Cell(int col, int row) {
             this.col = col;
