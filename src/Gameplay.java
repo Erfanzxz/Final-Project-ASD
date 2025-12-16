@@ -23,9 +23,9 @@ public class Gameplay extends JPanel implements ActionListener {
     private final Color WALL_COLOR_OUTER = new Color(25, 25, 165);
     private final Color WALL_COLOR_INNER = new Color(100, 100, 255);
 
-    // Warna Node (Weight) Gelap sesuai permintaan
+    // Warna Node (Weight) Gelap
     private final Color COLOR_WEIGHT_1 = new Color(19, 32, 59); // Dark Blue
-    private final Color COLOR_WEIGHT_5 = new Color(50, 50, 60); // Dark Grey (Sedikit diterangkan agar beda)
+    private final Color COLOR_WEIGHT_5 = new Color(50, 50, 60); // Dark Grey
     private final Color COLOR_WEIGHT_10 = new Color(45, 20, 45); // Dark Purple
 
     // --- Struktur Data ---
@@ -35,6 +35,7 @@ public class Gameplay extends JPanel implements ActionListener {
     // --- Variabel Logika ---
     private Stack<Cell> stack;
     private Queue<Cell> queue;
+    private PriorityQueue<Cell> priorityQueue; // Untuk Dijkstra & A*
 
     // Class untuk menyimpan data tiap path (History)
     private class PathLayer {
@@ -59,17 +60,18 @@ public class Gameplay extends JPanel implements ActionListener {
     private String currentAlgo = "";
 
     // --- UI Control ---
-    private JButton btnNewMaze, btnClearPaths, btnBFS, btnDFS;
+    private JButton btnNewMaze, btnClearPaths, btnBFS, btnDFS, btnDijkstra, btnAStar;
 
     // --- Images ---
     private BufferedImage pacmanImg;
     private BufferedImage dotImg;
+
     // GANTI PATH INI SESUAI KOMPUTER ANDA
     private String pacmanPath = "C:\\Users\\User\\Downloads\\pacman.png";
     private String dotPath = "C:\\Users\\User\\Downloads\\dot.png";
 
     public Gameplay() {
-        this.setPreferredSize(new Dimension(WIDTH, HEIGHT + 60));
+        this.setPreferredSize(new Dimension(WIDTH, HEIGHT + 100)); // Tambah tinggi panel untuk tombol extra
         this.setLayout(null);
         this.setBackground(BG_COLOR);
 
@@ -89,26 +91,37 @@ public class Gameplay extends JPanel implements ActionListener {
 
     private void initButtons() {
         int btnY = HEIGHT + 20;
+        int btnY2 = HEIGHT + 55; // Baris kedua tombol
         Color btnBg = new Color(50, 50, 50);
-        Color btnFg = Color.WHITE;
 
+        // --- ROW 1 ---
         btnNewMaze = createStyledButton("New Maze", 10, btnY, 100, new Color(200, 50, 50), Color.WHITE);
         btnNewMaze.addActionListener(e -> generateMaze());
 
         btnClearPaths = createStyledButton("Clear Paths", 120, btnY, 100, new Color(200, 150, 0), Color.BLACK);
         btnClearPaths.addActionListener(e -> clearPaths());
 
-        // Algoritma
-        btnBFS = createStyledButton("BFS (Cyan)", 230, btnY, 100, btnBg, Color.CYAN);
+        btnBFS = createStyledButton("BFS", 230, btnY, 80, btnBg, Color.CYAN);
         btnBFS.addActionListener(e -> startSolving("BFS"));
 
-        btnDFS = createStyledButton("DFS (Pink)", 340, btnY, 100, btnBg, Color.PINK);
+        btnDFS = createStyledButton("DFS", 320, btnY, 80, btnBg, Color.PINK);
         btnDFS.addActionListener(e -> startSolving("DFS"));
+
+        // --- ROW 2 (NEW ALGORITHMS) ---
+        // Dijkstra (Warna Hijau Neon)
+        btnDijkstra = createStyledButton("Dijkstra", 230, btnY2, 80, btnBg, Color.GREEN);
+        btnDijkstra.addActionListener(e -> startSolving("Dijkstra"));
+
+        // A* (Warna Orange Neon)
+        btnAStar = createStyledButton("A* Star", 320, btnY2, 80, btnBg, Color.ORANGE);
+        btnAStar.addActionListener(e -> startSolving("AStar"));
 
         this.add(btnNewMaze);
         this.add(btnClearPaths);
         this.add(btnBFS);
         this.add(btnDFS);
+        this.add(btnDijkstra);
+        this.add(btnAStar);
     }
 
     private JButton createStyledButton(String text, int x, int y, int w, Color bg, Color fg) {
@@ -156,7 +169,7 @@ public class Gameplay extends JPanel implements ActionListener {
             addFrontier(current, frontier);
         }
 
-        // Braid Maze (Multiple Paths)
+        // Braid Maze
         int extraPaths = 50;
         for (int i = 0; i < extraPaths; i++) {
             int cx = rand.nextInt(COLS);
@@ -191,6 +204,9 @@ public class Gameplay extends JPanel implements ActionListener {
             for (int y = 0; y < ROWS; y++) {
                 grid[x][y].visited = false;
                 grid[x][y].parent = null;
+                // Reset nilai Algoritma
+                grid[x][y].gCost = Integer.MAX_VALUE;
+                grid[x][y].fCost = Integer.MAX_VALUE;
             }
         }
     }
@@ -230,10 +246,15 @@ public class Gameplay extends JPanel implements ActionListener {
         animationIndex = 0;
         currentAlgo = algo;
 
-        if (algo.equals("BFS")) solveBFS(); else solveDFS();
+        switch (algo) {
+            case "BFS": solveBFS(); break;
+            case "DFS": solveDFS(); break;
+            case "Dijkstra": solveDijkstra(); break;
+            case "AStar": solveAStar(); break;
+        }
 
         isSolving = true;
-        timer = new Timer(10, this); // Kecepatan animasi
+        timer = new Timer(15, this);
         timer.start();
     }
 
@@ -271,6 +292,82 @@ public class Gameplay extends JPanel implements ActionListener {
                 }
             }
         }
+    }
+
+    // --- DIJKSTRA ALGORITHM ---
+    private void solveDijkstra() {
+        // Priority Queue diurutkan berdasarkan gCost (jarak tempuh dari start)
+        priorityQueue = new PriorityQueue<>(Comparator.comparingInt(c -> c.gCost));
+
+        startCell.gCost = 0;
+        priorityQueue.add(startCell);
+
+        while (!priorityQueue.isEmpty()) {
+            Cell current = priorityQueue.poll();
+
+            if (current.visited) continue; // Skip jika sudah diproses
+            current.visited = true;
+            visitedOrder.add(current);
+
+            if (current == endCell) { backtrackPath(); return; }
+
+            for (Cell neighbor : getConnectedNeighbors(current)) {
+                if (!neighbor.visited) {
+                    // Logic Directed Weight: Biaya pindah ke node B adalah Weight B
+                    int newCost = current.gCost + neighbor.weight;
+
+                    if (newCost < neighbor.gCost) {
+                        neighbor.gCost = newCost;
+                        neighbor.parent = current;
+                        priorityQueue.add(neighbor);
+                    }
+                }
+            }
+        }
+    }
+
+    // --- A* (A-STAR) ALGORITHM ---
+    private void solveAStar() {
+        // Priority Queue diurutkan berdasarkan fCost (gCost + Heuristic)
+        priorityQueue = new PriorityQueue<>(Comparator.comparingInt(c -> c.fCost));
+
+        startCell.gCost = 0;
+        startCell.fCost = heuristic(startCell, endCell);
+        priorityQueue.add(startCell);
+
+        while (!priorityQueue.isEmpty()) {
+            Cell current = priorityQueue.poll();
+
+            // A* sedikit beda, kita tandai visited saat di-poll
+            if (current.visited) continue;
+            current.visited = true;
+            visitedOrder.add(current);
+
+            if (current == endCell) { backtrackPath(); return; }
+
+            for (Cell neighbor : getConnectedNeighbors(current)) {
+                if (!neighbor.visited) {
+                    int tentativeGCost = current.gCost + neighbor.weight;
+
+                    if (tentativeGCost < neighbor.gCost) {
+                        neighbor.parent = current;
+                        neighbor.gCost = tentativeGCost;
+                        neighbor.hCost = heuristic(neighbor, endCell);
+                        neighbor.fCost = neighbor.gCost + neighbor.hCost;
+
+                        // Jika sudah ada di PQ tapi cost baru lebih kecil, Java PQ tidak otomatis update
+                        // Cara simpel: tambahkan lagi (node lama akan di-skip saat di-poll karena visited=true)
+                        priorityQueue.add(neighbor);
+                    }
+                }
+            }
+        }
+    }
+
+    // Fungsi Heuristik (Manhattan Distance untuk Grid)
+    private int heuristic(Cell a, Cell b) {
+        // Kalikan dengan weight minimum (1) agar skalanya pas
+        return Math.abs(a.col - b.col) + Math.abs(a.row - b.row);
     }
 
     private void backtrackPath() {
@@ -312,9 +409,17 @@ public class Gameplay extends JPanel implements ActionListener {
         } else {
             timer.stop();
             isSolving = false;
-            // UPDATE WARNA PATH AKHIR
-            // Karena background gelap, gunakan warna Cyan terang untuk BFS (jangan biru tua)
-            Color pathColor = currentAlgo.equals("BFS") ? Color.CYAN : new Color(255, 105, 180); // Hot Pink
+
+            // Tentukan Warna Path Akhir
+            Color pathColor;
+            switch(currentAlgo) {
+                case "BFS": pathColor = Color.CYAN; break;
+                case "DFS": pathColor = new Color(255, 105, 180); break; // Hot Pink
+                case "Dijkstra": pathColor = Color.GREEN; break;
+                case "AStar": pathColor = Color.ORANGE; break;
+                default: pathColor = Color.WHITE;
+            }
+
             pathHistory.add(new PathLayer(new ArrayList<>(currentAnimatingPath), pathColor, currentAlgo));
             repaint();
         }
@@ -334,33 +439,27 @@ public class Gameplay extends JPanel implements ActionListener {
             }
         }
 
-        // 2. PATH HISTORY (Jejak yang sudah selesai)
+        // 2. PATH HISTORY
         for (PathLayer layer : pathHistory) {
             Color c = layer.color;
-            // Gunakan warna solid atau semi-transparan yang kuat
             g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 200));
             for (Cell cell : layer.cells) {
-                // Gambar jalur sedikit lebih kecil dari kotak
                 g2.fillRect(cell.col * CELL_SIZE + 10, cell.row * CELL_SIZE + 10, CELL_SIZE - 20, CELL_SIZE - 20);
-                // Tambahkan outline agar lebih jelas
                 g2.setColor(Color.WHITE);
                 g2.drawRect(cell.col * CELL_SIZE + 10, cell.row * CELL_SIZE + 10, CELL_SIZE - 20, CELL_SIZE - 20);
-                g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 200)); // Balikin warna
+                g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 200));
             }
         }
 
-        // 3. ANIMASI SCANNING (Proses Pencarian)
+        // 3. ANIMASI SCANNING
         if (isSolving) {
-            // PERUBAHAN: Gunakan warna terang transparan (Neon) agar terlihat di background gelap
-            if (currentAlgo.equals("BFS")) {
-                g2.setColor(new Color(0, 255, 255, 120)); // Neon Cyan Transparan
-            } else {
-                g2.setColor(new Color(255, 105, 180, 120)); // Neon Pink Transparan
-            }
+            if (currentAlgo.equals("BFS")) g2.setColor(new Color(0, 255, 255, 120));
+            else if (currentAlgo.equals("DFS")) g2.setColor(new Color(255, 105, 180, 120));
+            else if (currentAlgo.equals("Dijkstra")) g2.setColor(new Color(0, 255, 0, 120)); // Hijau Neon
+            else if (currentAlgo.equals("AStar")) g2.setColor(new Color(255, 165, 0, 120)); // Oranye Neon
 
             for (int i = 0; i < animationIndex && i < visitedOrder.size(); i++) {
                 Cell c = visitedOrder.get(i);
-                // Mengisi full kotak agar efek "scanning" terasa
                 g2.fillRect(c.col * CELL_SIZE, c.row * CELL_SIZE, CELL_SIZE, CELL_SIZE);
             }
         }
@@ -369,14 +468,12 @@ public class Gameplay extends JPanel implements ActionListener {
         int startX = startCell.col * CELL_SIZE;
         int startY = startCell.row * CELL_SIZE;
         if (pacmanImg != null) {
-            // Gambar Pacman
             g2.drawImage(pacmanImg, startX + 2, startY + 2, CELL_SIZE - 4, CELL_SIZE - 4, null);
         } else {
             g2.setColor(Color.YELLOW);
             g2.fillArc(startX+2, startY+2, CELL_SIZE-4, CELL_SIZE-4, 30, 300);
         }
 
-        // End Point (Merah Terang)
         g2.setColor(new Color(255, 50, 50));
         g2.fillRect(endCell.col * CELL_SIZE + 5, endCell.row * CELL_SIZE + 5, CELL_SIZE - 10, CELL_SIZE - 10);
         g2.setColor(Color.WHITE);
@@ -399,6 +496,11 @@ public class Gameplay extends JPanel implements ActionListener {
         Cell parent = null;
         int weight;
         Color nodeColor;
+
+        // Variabel untuk Dijkstra dan A*
+        int gCost = Integer.MAX_VALUE; // Biaya dari start ke node ini
+        int hCost = 0; // Biaya heuristik (perkiraan) ke end
+        int fCost = Integer.MAX_VALUE; // Total cost (g + h)
 
         public Cell(int col, int row) {
             this.col = col;
